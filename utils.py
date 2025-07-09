@@ -5,6 +5,7 @@ import numpy as np
 import torch.nn as nn
 import os
 import pickle
+import torch
 
 
 def save_model_and_metrics(name, model, acc_matrix, tag=""):
@@ -69,6 +70,33 @@ def compute_avg_forgetting(acc_matrix):
             forgetting.append(max_prev - last)
 
     return np.mean(forgetting) if forgetting else 0.0
+
+
+def estimate_diag_hessian_exact(model, data_loader, criterion, device='cuda'):
+    model.eval()
+    hessian_diag = {name: torch.zeros_like(p, device=device) for name, p in model.named_parameters() if p.requires_grad}
+
+    for inputs, labels in data_loader:
+        inputs, labels = inputs.to(device), labels.to(device)
+        model.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+
+        # First-order gradients (retain graph for second-order)
+        grads = torch.autograd.grad(loss, model.parameters(), create_graph=True)
+
+        for i, (name, param) in enumerate(model.named_parameters()):
+            if not param.requires_grad:
+                continue
+
+            grad = grads[i]
+            grad2 = torch.autograd.grad(grad, param, grad_outputs=torch.ones_like(grad), retain_graph=True)[0]
+            hessian_diag[name] += grad2.detach()
+
+    for name in hessian_diag:
+        hessian_diag[name] /= len(data_loader)
+
+    return hessian_diag
 
 
 def estimate_diag_hessian(model, data_loader, criterion, device='cuda'):

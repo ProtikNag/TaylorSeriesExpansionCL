@@ -92,8 +92,7 @@ def main(args):
         print_metrics("Taylor", acc_taylor)
         all_accs.append(acc_taylor)
         all_names.append("Taylor")
-    
-    
+
     if "linear" in args.methods:
         model_linear, acc_linear = load_model_and_metrics("Linear", get_model, num_classes_per_task, tag)
         if model_linear is None:
@@ -105,7 +104,6 @@ def main(args):
         print_metrics("Linear", acc_linear)
         all_accs.append(acc_linear)
         all_names.append("Linear")
-
 
 
 if __name__ == "__main__":

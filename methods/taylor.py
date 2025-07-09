@@ -18,7 +18,7 @@ def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, devi
                 inputs, labels = inputs.to(device), labels.to(device)
                 optimizer.zero_grad()
                 outputs = model(inputs)
-                loss = criterion(outputs, labels)  # labels already remapped to [0–9]
+                loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
     return model
