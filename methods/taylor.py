@@ -76,32 +76,37 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                  num_epochs=30, lr=0.001, lambda_reg=100.0, device='cuda'):
+    replay_size = 5000
     model = model.to(device)
     acc_per_task = []
     total_tasks = len(task_train_loaders)
+    replay_buffer = []
 
     # Partition tasks into groups
-    task_groups = []
-    start = 0
-    while start < total_tasks:
-        end = min(start + group_size, total_tasks)
-        task_groups.append(list(range(start, end)))
-        start = end
+    task_groups = [list(range(i, min(i + group_size, total_tasks))) for i in range(0, total_tasks, group_size)]
 
     for t, task_group in enumerate(task_groups):
         print(f"\n=== Training Group {t} with Tasks {task_group} ===")
 
-        local_model = select_best_permutation(model, task_group, task_train_loaders, task_train_loaders,
+        local_base_model = clone_model(model)
+        local_model = select_best_permutation(local_base_model, task_group, task_train_loaders, task_train_loaders,
                                               num_epochs, lr, device)
+
+        # Combine current tasks with a replay buffer
+        combined_dataset = [task_train_loaders[i].dataset for i in task_group] + replay_buffer
+        combined_loader = torch.utils.data.DataLoader(
+            torch.utils.data.ConcatDataset(combined_dataset), batch_size=64, shuffle=True
+        )
 
         if t == 0:
             model.load_state_dict(local_model.state_dict())
         else:
-            combined_loader = torch.utils.data.DataLoader(
-                torch.utils.data.ConcatDataset([task_train_loaders[i].dataset for i in task_group]),
-                batch_size=64, shuffle=True
-            )
             taylor_global_update(model, local_model, combined_loader, lambda_reg, device)
+
+        replay_buffer.extend([task_train_loaders.dataset])
+        replay_buffer = list(torch.utils.data.RandomSampler(torch.utils.data.ConcatDataset(replay_buffer), replacement=True))
+        if len(replay_buffer) > replay_size:
+            replay_buffer = replay_buffer[-replay_size:]
 
         accs = []
         for test_task_id in range(max(task_group) + 1):

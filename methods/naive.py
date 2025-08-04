@@ -15,15 +15,22 @@ def train_naive(model, task_train_loaders, task_test_loaders, num_epochs=5, lr=0
     criterion = nn.CrossEntropyLoss()
     model = model.to(device)
     acc_per_task = []
+    replay_buffer = []
+    replay_size = 5000
 
     for task_id, train_loader in enumerate(task_train_loaders):
         print(f"\n--- Training on Task {task_id} (Naive) ---")
         optimizer = optim.Adam(model.parameters(), lr=lr)
 
+        combined_datasets = [train_loader.dataset] + replay_buffer
+        combined_loader = torch.utils.data.DataLoader(
+            torch.utils.data.ConcatDataset(combined_datasets), batch_size=64, shuffle=True
+        )
+
         model.train()
         for epoch in range(num_epochs):
             running_loss = 0.0
-            for inputs, labels in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
+            for inputs, labels in tqdm(combined_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
                 inputs, labels = inputs.to(device), labels.to(device)
 
                 optimizer.zero_grad()
@@ -33,6 +40,10 @@ def train_naive(model, task_train_loaders, task_test_loaders, num_epochs=5, lr=0
                 optimizer.step()
                 running_loss += loss.item()
             print(f"Task {task_id} - Epoch {epoch+1}, Loss: {running_loss:.4f}")
+
+        # Update replay buffer
+        replay_buffer.append(train_loader.dataset)
+        replay_buffer = replay_buffer[-replay_size:]  # Keep a fixed buffer size
 
         # Evaluate on all tasks seen so far
         accs = []
