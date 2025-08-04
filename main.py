@@ -32,6 +32,7 @@ def print_metrics(name, acc_matrix):
     avg_acc = compute_avg_accuracy(acc_matrix)
     avg_forgetting = compute_avg_forgetting(acc_matrix)
     print(f"=== {name} ===")
+    print(f"Accuracies   : {acc_matrix}")
     print(f"Avg Accuracy   : {avg_acc:.2f}%")
     print(f"Avg Forgetting : {avg_forgetting:.2f}%\n")
     return avg_acc, avg_forgetting
