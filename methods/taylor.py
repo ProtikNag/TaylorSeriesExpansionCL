@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from itertools import permutations
 from tqdm import tqdm
-from utils import evaluate, estimate_diag_hessian, clone_model
+from utils import evaluate, estimate_diag_hessian_exact, clone_model
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device):
@@ -64,7 +64,7 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
     for name in grads:
         grads[name] /= len(train_loader)
 
-    hessians = estimate_diag_hessian(global_model, train_loader, criterion, device)
+    hessians = estimate_diag_hessian_exact(global_model, train_loader, criterion, device)
 
     with torch.no_grad():
         for name, param in global_model.named_parameters():
