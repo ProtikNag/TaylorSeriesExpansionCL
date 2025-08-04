@@ -4,6 +4,7 @@ import torch.optim as optim
 from itertools import permutations
 from tqdm import tqdm
 from utils import evaluate, estimate_diag_hessian_exact, clone_model
+import random
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device):
@@ -102,9 +103,10 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
             model.load_state_dict(local_model.state_dict())
         else:
             taylor_global_update(model, local_model, combined_loader, lambda_reg, device)
+        
+        replay_buffer.extend([task_train_loaders[i].dataset for i in task_group])
+        random.shuffle(replay_buffer)
 
-        replay_buffer.extend([task_train_loaders.dataset])
-        replay_buffer = list(torch.utils.data.RandomSampler(torch.utils.data.ConcatDataset(replay_buffer), replacement=True))
         if len(replay_buffer) > replay_size:
             replay_buffer = replay_buffer[-replay_size:]
 
