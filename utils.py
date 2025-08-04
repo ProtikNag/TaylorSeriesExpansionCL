@@ -28,7 +28,7 @@ def load_model_and_metrics(name, model_class, num_classes, tag=""):
         return None, None
 
     model = model_class(num_classes=num_classes)
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path), weights_only=True)
     with open(metric_path, 'rb') as f:
         acc_matrix = pickle.load(f)
     return model, acc_matrix
