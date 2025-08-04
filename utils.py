@@ -50,7 +50,7 @@ def evaluate(model, test_loader, device='cuda'):
 
 def compute_avg_accuracy(acc_matrix):
     """Compute average accuracy after each task"""
-    return np.mean([row[-1] for row in acc_matrix])
+    return np.mean([np.mean(row) for row in acc_matrix])
 
 
 def compute_avg_forgetting(acc_matrix):
