@@ -45,9 +45,9 @@ def main(args):
     # Dataset selector (future-proofing)
     if args.dataset == "CIFAR100":
         total_classes = 100
-        # data = ContinualCIFAR100(num_tasks=args.num_tasks, batch_size=args.batch_size)
+        data = ContinualCIFAR100(num_tasks=args.num_tasks, batch_size=args.batch_size)
         # Debug mode for quick testing
-        data = ContinualCIFAR100(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=3)
+        # data = ContinualCIFAR100(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=3)
     else:
         raise NotImplementedError(f"Dataset {args.dataset} not supported.")
 
