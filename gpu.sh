@@ -18,5 +18,5 @@ source activate /work/pnag/envs/ml_env/
 python --version
 
 cd /work/pnag/TaylorSeriesExpansionCL/
-python main.py --group_size 5 --epochs 10 --lr 0.001 --methods taylor lambda_reg 500
+python main.py --group_size 2 --epochs 10 --lr 0.001 --methods taylor lambda_reg 500
 python main.py --methods naive

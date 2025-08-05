@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH --job-name=linear
+#SBATCH --job-name=taylor
 #SBATCH -N 1         			## Compute None (Number of computers)
 #SBATCH -n 24 	     			## CPU Cores 
 #SBATCH --gres=gpu:2 			## Run on 2 GPUs
@@ -18,5 +18,5 @@ source activate /work/pnag/envs/ml_env/
 python --version
 
 cd /work/pnag/TaylorSeriesExpansionCL/
-python main.py --group_size 2 --epochs 30 --lr 0.01 --methods linear
-
+python main.py --group_size 3 --epochs 10 --lr 0.001 --methods taylor lambda_reg 500
+python main.py --methods naive
