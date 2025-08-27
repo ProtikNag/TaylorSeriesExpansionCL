@@ -8,26 +8,26 @@ import pickle
 import torch
 
 
-def save_model_and_metrics(name, model, acc_matrix, tag=""):
+def save_model_and_metrics(name, model, acc_matrix, data, tag=""):
     os.makedirs("checkpoints", exist_ok=True)
     os.makedirs("results", exist_ok=True)
 
-    model_path = f"checkpoints/{name}_{tag}.pt"
-    metric_path = f"results/{name}_{tag}.pkl"
+    model_path = f"checkpoints/{name}_{tag}_{data}.pt"
+    metric_path = f"results/{name}_{tag}_{data}.pkl"
 
     torch.save(model.state_dict(), model_path)
     with open(metric_path, 'wb') as f:
         pickle.dump(acc_matrix, f)
 
 
-def load_model_and_metrics(name, model_class, num_classes, tag=""):
-    model_path = f"checkpoints/{name}_{tag}.pt"
-    metric_path = f"results/{name}_{tag}.pkl"
+def load_model_and_metrics(name, model_class, num_classes, data, tag=""):
+    model_path = f"checkpoints/{name}_{tag}_{data}.pt"
+    metric_path = f"results/{name}_{tag}_{data}.pkl"
 
     if not (os.path.exists(model_path) and os.path.exists(metric_path)):
         return None, None
 
-    model = model_class(num_classes=num_classes)
+    model = model_class(num_classes=num_classes, dataset=data)
     model.load_state_dict(torch.load(model_path, weights_only=True))
     with open(metric_path, 'rb') as f:
         acc_matrix = pickle.load(f)
