@@ -3,14 +3,17 @@ import torch.nn as nn
 import torch.optim as optim
 from itertools import permutations
 from tqdm import tqdm
+from methods.der import ReplayBuffer
 from utils import evaluate, estimate_diag_hessian_exact, clone_model
 import random
 
 
-def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device):
+def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
+                      alpha=0.5, beta=0.5, buffer_size=5000):
     model = clone_model(base_model).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
+    buffer = ReplayBuffer(capacity=buffer_size, device=device)
 
     model.train()
     for epoch in range(num_epochs):
@@ -18,10 +21,34 @@ def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, devi
             for inputs, labels in train_loaders[task_id]:
                 inputs, labels = inputs.to(device), labels.to(device)
                 optimizer.zero_grad()
+
+                # Forward on current batch
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
+
+                # Replay from buffer (DER++)
+                replay = buffer.sample(batch_size=len(labels))
+                if replay is not None:
+                    x_buf, y_buf, z_buf = replay
+                    out_buf = model(x_buf)
+
+                    # Logit matching loss (distillation)
+                    distill_loss = torch.nn.functional.mse_loss(out_buf, z_buf)
+                    loss += alpha * distill_loss
+
+                    # CE loss on buffer labels (DER++)
+                    ce_loss = criterion(out_buf, y_buf)
+                    loss += beta * ce_loss
+
                 loss.backward()
                 optimizer.step()
+
+                # Store current samples in buffer
+                with torch.no_grad():
+                    logits = outputs.detach()
+                    for x, y, z in zip(inputs, labels, logits):
+                        buffer.add_sample(x.cpu(), y.cpu(), z.cpu())
+
     return model
 
 
@@ -90,7 +117,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         print(f"\n=== Training Group {t} with Tasks {task_group} ===")
 
         local_base_model = clone_model(model)
-        local_model = select_best_permutation(local_base_model, task_group, task_train_loaders, task_train_loaders,
+        local_model = select_best_permutation(local_base_model, task_group, task_train_loaders, task_test_loaders,
                                               num_epochs, lr, device)
 
         # Combine current tasks with a replay buffer

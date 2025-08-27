@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 from data import ContinualCIFAR100
 from models import get_model
 from methods.naive import train_naive
-from methods.ewc import train_ewc
 from methods.taylor import train_taylor
 from methods.linear import train_linear
 from utils import compute_avg_accuracy, compute_avg_forgetting, save_model_and_metrics, load_model_and_metrics
