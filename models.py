@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+import torch.nn.functional as F
 
 
 class SimpleResNet(nn.Module):
@@ -24,21 +25,21 @@ class SimpleResNet(nn.Module):
         return x
 
 
-class SimpleResNetMNIST(nn.Module):
+class SmallCNN(nn.Module):
     def __init__(self, num_classes=2):
-        super(SimpleResNetMNIST, self).__init__()
-
-        self.backbone = models.resnet18(weights=None)
-        self.backbone.conv1 = nn.Conv2d(
-            1, 64, kernel_size=3, stride=1, padding=1, bias=False
-        )
-        self.backbone.maxpool = nn.Identity()
-        self.backbone.fc = nn.Identity()
-        self.classifier = nn.Linear(512, num_classes)
+        super(SmallCNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)   
+        self.conv2 = nn.Conv2d(32, 32, kernel_size=3, padding=1) 
+        self.pool = nn.MaxPool2d(2, 2)  # halves spatial dims
+        self.fc1 = nn.Linear(32 * 7 * 7, 128)
+        self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
-        x = self.backbone(x)
-        x = self.classifier(x)
+        x = self.pool(F.relu(self.conv1(x)))  # [B, 16, 14, 14]
+        x = self.pool(F.relu(self.conv2(x)))  # [B, 32, 7, 7]
+        x = x.view(x.size(0), -1)             # flatten
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
         return x
 
 
@@ -51,7 +52,7 @@ def get_model(num_classes=2, freeze_backbone=False, dataset="SplitMNIST"):
     if dataset == "CIFAR100":
         model = SimpleResNet(num_classes)
     elif dataset == "SplitMNIST":
-        model = SimpleResNetMNIST(num_classes)  # Always 2-way
+        model = SmallCNN(num_classes)  # Always 2-way
     else:
         raise NotImplementedError(f"Dataset {dataset} not supported.")
 

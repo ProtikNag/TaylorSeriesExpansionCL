@@ -9,7 +9,7 @@ import random
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
-                      alpha=0.5, beta=0.5, buffer_size=5000):
+                      alpha=0.5, beta=0.5, buffer_size=200):
     model = clone_model(base_model).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -104,7 +104,7 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                  num_epochs=30, lr=0.001, lambda_reg=100.0, device='cuda'):
-    replay_size = 5000
+    replay_size = 200
     model = model.to(device)
     acc_per_task = []
     total_tasks = len(task_train_loaders)

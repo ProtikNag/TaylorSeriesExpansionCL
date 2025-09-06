@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:2 			## Run on 2 GPUs
 #SBATCH --output job%j.%N.out
 #SBATCH --error job%j.%N.err
-#SBATCH -p gpu-v100-16gb		
+#SBATCH -p gpu-v100-32gb		
 
 hostname
 date
@@ -18,5 +18,4 @@ source activate /work/pnag/envs/ml_env/
 python --version
 
 cd /work/pnag/TaylorSeriesExpansionCL/
-python main.py --group_size 3 --epochs 10 --lr 0.001 --methods taylor lambda_reg 500
-python main.py --methods naive
+python main.py --dataset SplitMNIST --group_size 2 --epochs 10 --lr 0.001 --methods taylor lambda_reg 500
