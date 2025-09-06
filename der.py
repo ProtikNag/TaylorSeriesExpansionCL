@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 import random
 from tqdm import tqdm  # NEW
 from models import get_model
-from data import ContinualCIFAR100
+from data import ContinualSplitMNIST
 
 
 class ReplayBuffer:
@@ -106,7 +106,7 @@ def evaluate(model, test_loaders, device):
 def continual_learning(num_tasks=10, num_classes=10, buffer_size=5000,
                        alpha=0.5, beta=0.5, der_plus=True, device="cuda"):
     # Data + model
-    data = ContinualCIFAR100(num_tasks=num_tasks)
+    data = ContinualSplitMNIST(num_tasks=num_tasks)
     train_loaders, test_loaders = data.get_task_loaders()
     model = get_model(num_classes=num_classes).to(device)
 
