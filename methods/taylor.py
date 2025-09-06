@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from itertools import permutations
-from tqdm import tqdm
-from methods.der import ReplayBuffer
+from der import ReplayBuffer
 from utils import evaluate, estimate_diag_hessian_exact, clone_model
 import random
 

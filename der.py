@@ -130,8 +130,8 @@ def continual_learning(num_tasks=10, num_classes=10, buffer_size=5000,
 
 def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = continual_learning(num_tasks=10, num_classes=10,
-                               buffer_size=5000, alpha=0.5, beta=0.5,
+    model = continual_learning(num_tasks=5, num_classes=2,
+                               buffer_size=200, alpha=0.5, beta=0.5,
                                der_plus=True, device=device)
 
 
