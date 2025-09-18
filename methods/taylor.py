@@ -103,43 +103,81 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                  num_epochs=30, lr=0.001, lambda_reg=100.0, device='cuda'):
-    replay_size = 200
-    model = model.to(device)
-    acc_per_task = []
-    total_tasks = len(task_train_loaders)
-    replay_buffer = []
+    import itertools
+    import pandas as pd
+    import matplotlib.pyplot as plt
 
-    # Partition tasks into groups
-    task_groups = [list(range(i, min(i + group_size, total_tasks))) for i in range(0, total_tasks, group_size)]
+    num_tasks = len(task_train_loaders)
+    task_indices = list(range(num_tasks))
+    results = []
 
-    for t, task_group in enumerate(task_groups):
-        print(f"\n=== Training Group {t} with Tasks {task_group} ===")
+    print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
-        local_base_model = clone_model(model)
-        local_model = select_best_permutation(local_base_model, task_group, task_train_loaders, task_test_loaders,
-                                              num_epochs, lr, device)
+    for seq_id, perm in enumerate(itertools.permutations(task_indices), start=1):
+        print(f"\n--- Sequence {seq_id}: {perm} ---")
 
-        # Combine current tasks with a replay buffer
-        combined_dataset = [task_train_loaders[i].dataset for i in task_group] + replay_buffer
-        combined_loader = torch.utils.data.DataLoader(
-            torch.utils.data.ConcatDataset(combined_dataset), batch_size=64, shuffle=True
-        )
+        # Reorder loaders by permutation
+        ordered_train = [task_train_loaders[i] for i in perm]
+        ordered_test = [task_test_loaders[i] for i in perm]
 
-        if t == 0:
-            model.load_state_dict(local_model.state_dict())
-        else:
-            taylor_global_update(model, local_model, combined_loader, lambda_reg, device)
-        
-        replay_buffer.extend([task_train_loaders[i].dataset for i in task_group])
-        random.shuffle(replay_buffer)
+        # Clone fresh model for this run
+        local_model = clone_model(model).to(device)
 
-        if len(replay_buffer) > replay_size:
-            replay_buffer = replay_buffer[-replay_size:]
+        # Standard Taylor training procedure
+        replay_size = 200
+        replay_buffer = []
+        acc_per_task = []
 
-        accs = []
-        for test_task_id in range(max(task_group) + 1):
-            acc = evaluate(model, task_test_loaders[test_task_id], device=device)
-            accs.append(acc)
-        acc_per_task.append(accs)
+        task_groups = [list(range(i, min(i + group_size, num_tasks)))
+                       for i in range(0, num_tasks, group_size)]
 
-    return model, acc_per_task
+        for t, task_group in enumerate(task_groups):
+            local_base_model = clone_model(local_model)
+            local_trained = select_best_permutation(local_base_model, task_group,
+                                                    ordered_train, ordered_test,
+                                                    num_epochs, lr, device)
+
+            combined_dataset = [ordered_train[i].dataset for i in task_group] + replay_buffer
+            combined_loader = torch.utils.data.DataLoader(
+                torch.utils.data.ConcatDataset(combined_dataset),
+                batch_size=64, shuffle=True
+            )
+
+            if t == 0:
+                local_model.load_state_dict(local_trained.state_dict())
+            else:
+                taylor_global_update(local_model, local_trained,
+                                     combined_loader, lambda_reg, device)
+
+            replay_buffer.extend([ordered_train[i].dataset for i in task_group])
+            random.shuffle(replay_buffer)
+            if len(replay_buffer) > replay_size:
+                replay_buffer = replay_buffer[-replay_size:]
+
+            accs = [evaluate(local_model, ordered_test[tid], device=device)
+                    for tid in range(max(task_group) + 1)]
+            acc_per_task.append(accs)
+
+        # record only the final accuracy after all tasks
+        results.append({"sequence": perm, "accuracies": acc_per_task[-1]})
+
+    # Convert results into DataFrame
+    df = pd.DataFrame({
+        "sequence": [r["sequence"] for r in results],
+        **{f"Task{t+1}": [r["accuracies"][t] for r in results] for t in range(num_tasks)}
+    })
+
+    df.to_csv("taylor_permutation_results.csv", index=False)
+    print("Saved results to taylor_permutation_results.csv")
+
+    # Boxplot
+    plt.figure(figsize=(8, 6))
+    df[[f"Task{i+1}" for i in range(num_tasks)]].boxplot()
+    plt.title("Taylor-Series Update Performance Variability Across Task Orders")
+    plt.ylabel("Accuracy (%)")
+    plt.savefig("taylor_performance_boxplot.pdf")
+    plt.close()
+
+    print("Saved boxplot to taylor_performance_boxplot.pdf")
+
+    return model, df
