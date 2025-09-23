@@ -5,6 +5,9 @@ from itertools import permutations
 from der import ReplayBuffer
 from utils import evaluate, estimate_diag_hessian_exact, clone_model
 import random
+import itertools
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
@@ -103,10 +106,6 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                  num_epochs=30, lr=0.001, lambda_reg=100.0, device='cuda'):
-    import itertools
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []
@@ -124,7 +123,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         local_model = clone_model(model).to(device)
 
         # Standard Taylor training procedure
-        replay_size = 200
+        replay_size = 5000
         replay_buffer = []
         acc_per_task = []
 

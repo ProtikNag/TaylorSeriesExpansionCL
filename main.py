@@ -93,10 +93,10 @@ def main(args):
             model_taylor, acc_taylor = train_taylor(model_taylor, train_loaders, test_loaders,
                                                     group_size=args.group_size, num_epochs=args.epochs,
                                                     lr=args.lr, lambda_reg=args.lambda_reg, device=device)
-            save_model_and_metrics("Taylor", model_taylor, acc_taylor, args.dataset, tag)
-        print_metrics("Taylor", acc_taylor)
-        all_accs.append(acc_taylor)
-        all_names.append("Taylor")
+            # save_model_and_metrics("Taylor", model_taylor, acc_taylor, args.dataset, tag)
+        # print_metrics("Taylor", acc_taylor)
+        # all_accs.append(acc_taylor)
+        # all_names.append("Taylor")
 
     if "linear" in args.methods:
         model_linear, acc_linear = load_model_and_metrics("Linear", get_model, num_classes_per_task, tag)
