@@ -88,9 +88,10 @@ def main(args):
 
     if "taylor" in args.methods:
         model_taylor, acc_taylor = load_model_and_metrics("Taylor", get_model, num_classes_per_task, args.dataset, tag)
-        if model_taylor is None:
-            model_taylor = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
-            model_taylor, acc_taylor = train_taylor(model_taylor, train_loaders, test_loaders,
+        # if model_taylor is None:
+        print("Num classes per task:", num_classes_per_task)
+        model_taylor = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
+        model_taylor, acc_taylor = train_taylor(model_taylor, train_loaders, test_loaders,
                                                     group_size=args.group_size, num_epochs=args.epochs,
                                                     lr=args.lr, lambda_reg=args.lambda_reg, device=device)
             # save_model_and_metrics("Taylor", model_taylor, acc_taylor, args.dataset, tag)

@@ -11,10 +11,10 @@ import matplotlib.pyplot as plt
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
-                      alpha=0.5, beta=0.5, buffer_size=200):
+                      alpha=0.5, beta=0.5, buffer_size=500):
     model = clone_model(base_model).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     buffer = ReplayBuffer(capacity=buffer_size, device=device)
 
     model.train()
@@ -123,7 +123,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         local_model = clone_model(model).to(device)
 
         # Standard Taylor training procedure
-        replay_size = 5000
+        replay_size = 500
         replay_buffer = []
         acc_per_task = []
 
