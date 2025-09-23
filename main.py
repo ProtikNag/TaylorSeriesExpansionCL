@@ -50,9 +50,9 @@ def main(args):
         # data = ContinualCIFAR100(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=3)
     elif args.dataset == "SplitMNIST":
         total_classes = 10
-        data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size)
+        # data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size)
         # Debug mode for quick testing
-        # data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=3)
+        data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=500)
     else:
         raise NotImplementedError(f"Dataset {args.dataset} not supported.")
 
