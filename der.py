@@ -131,7 +131,7 @@ def continual_learning(train_loaders, test_loaders,
 # ------------------------
 def run_permutation_experiment(num_tasks=5):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    data = ContinualSplitMNIST(num_tasks=num_tasks, batch_size=64, debug=True, samples_per_class=500)
+    data = ContinualSplitMNIST(num_tasks=num_tasks, batch_size=64)
     all_train, all_test = data.get_task_loaders()
 
     task_indices = list(range(num_tasks))
@@ -145,7 +145,7 @@ def run_permutation_experiment(num_tasks=5):
         test_loaders = [all_test[i] for i in perm]
 
         accs = continual_learning(train_loaders, test_loaders,
-                                  num_classes=2, buffer_size=200,
+                                  num_classes=2, buffer_size=5000,
                                   alpha=0.5, beta=0.5, der_plus=True,
                                   device=device, epochs=5)
 
