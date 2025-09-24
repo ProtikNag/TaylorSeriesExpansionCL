@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:2 			## Run on 2 GPUs
 #SBATCH --output job%j.%N.out
 #SBATCH --error job%j.%N.err
-#SBATCH -p gpu-v100-16gb
+#SBATCH -p gpu
 
 hostname
 date
