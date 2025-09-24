@@ -105,7 +105,7 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
 
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
-                 num_epochs=30, lr=0.001, lambda_reg=100.0, device='cuda'):
+                 num_epochs=30, lr=0.01, lambda_reg=100.0, device='cuda'):
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []
@@ -113,6 +113,9 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
     print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
     for seq_id, perm in enumerate(itertools.permutations(task_indices), start=1):
+        if seq_id > 20:
+            break
+
         print(f"\n--- Sequence {seq_id}: {perm} ---")
 
         # Reorder loaders by permutation
@@ -123,7 +126,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         local_model = clone_model(model).to(device)
 
         # Standard Taylor training procedure
-        replay_size = 500
+        replay_size = 5
         replay_buffer = []
         acc_per_task = []
 
