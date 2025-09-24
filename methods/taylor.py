@@ -113,9 +113,6 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
     print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
     for seq_id, perm in enumerate(itertools.permutations(task_indices), start=1):
-        if seq_id > 20:
-            break
-
         print(f"\n--- Sequence {seq_id}: {perm} ---")
 
         # Reorder loaders by permutation
@@ -126,7 +123,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         local_model = clone_model(model).to(device)
 
         # Standard Taylor training procedure
-        replay_size = 5
+        replay_size = 30
         replay_buffer = []
         acc_per_task = []
 

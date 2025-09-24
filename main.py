@@ -52,7 +52,7 @@ def main(args):
         total_classes = 10
         # data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size)
         # Debug mode for quick testing
-        data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=30)
+        data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=300)
     else:
         raise NotImplementedError(f"Dataset {args.dataset} not supported.")
 
