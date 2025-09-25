@@ -37,8 +37,8 @@ def select_best_permutation(base_model, task_group_ids, train_loaders, val_loade
 
 
 def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100.0, device='cuda'):
-    global_model.load_state_dict(local_model.state_dict())
-    return
+    # global_model.load_state_dict(local_model.state_dict())
+    # return global_model
     criterion = nn.CrossEntropyLoss()
     global_model.train()
     local_model.eval()
@@ -68,12 +68,16 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
             delta = h_inv * (lambda_reg * (local_model.state_dict()[name] - param) - grads[name])
             param.add_(delta)
 
+    return global_model
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                  num_epochs=30, lr=0.01, lambda_reg=100.0, device='cuda'):
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []
+
+    # Clone fresh model
+    global_model = clone_model(model).to(device)
 
     print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
@@ -86,9 +90,6 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         ordered_train = [task_train_loaders[i] for i in perm]
         ordered_test = [task_test_loaders[i] for i in perm]
 
-        # Clone fresh model for this run
-        local_model = clone_model(model).to(device)
-
         # Standard Taylor training procedure
         replay_size = 8
         replay_buffer = []
@@ -98,7 +99,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                        for i in range(0, num_tasks, group_size)]
 
         for t, task_group in enumerate(task_groups):
-            local_base_model = clone_model(local_model)
+            local_base_model = clone_model(global_model).to(device)
             local_trained = select_best_permutation(local_base_model, task_group,
                                                     ordered_train, ordered_test,
                                                     num_epochs, lr, device)
@@ -110,9 +111,9 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
             )
 
             if t == 0:
-                local_model.load_state_dict(local_trained.state_dict())
+                global_model.load_state_dict(local_trained.state_dict())
             else:
-                taylor_global_update(local_model, local_trained,
+                global_model = taylor_global_update(global_model, local_trained,
                                      combined_loader, lambda_reg, device)
 
             replay_buffer.extend([ordered_train[i].dataset for i in task_group])
@@ -120,7 +121,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
             if len(replay_buffer) > replay_size:
                 replay_buffer = replay_buffer[-replay_size:]
 
-            accs = [evaluate(local_model, ordered_test[tid], device=device)
+            accs = [evaluate(global_model, ordered_test[tid], device=device)
                     for tid in range(max(task_group) + 1)]
             acc_per_task.append(accs)
 
