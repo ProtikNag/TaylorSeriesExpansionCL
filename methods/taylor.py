@@ -37,8 +37,6 @@ def select_best_permutation(base_model, task_group_ids, train_loaders, val_loade
 
 
 def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100.0, device='cuda'):
-    global_model.load_state_dict(local_model.state_dict())
-    return global_model
     criterion = nn.CrossEntropyLoss()
     global_model.train()
     local_model.eval()
@@ -110,7 +108,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                 batch_size=64, shuffle=True
             )
 
-            if t == 0:
+            if t >= -1:
                 global_model.load_state_dict(local_trained.state_dict())
             else:
                 global_model = taylor_global_update(global_model, local_trained,
