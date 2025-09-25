@@ -82,12 +82,12 @@ def run_der_experiments(model, task_train_loaders, task_test_loaders,
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []
-    buffer_size = 8
+    buffer_size = 100
 
     print(f"=== Running DER experiment across {len(list(permutations(task_indices)))} permutations ===")
 
     for seq_id, perm in enumerate(permutations(task_indices), start=1):
-        if seq_id > 3:
+        if seq_id > 10:
             break
 
         print(f"\n--- DER Sequence {seq_id}: {perm} ---")

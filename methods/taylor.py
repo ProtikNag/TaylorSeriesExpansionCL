@@ -80,7 +80,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
     print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
     for seq_id, perm in enumerate(itertools.permutations(task_indices), start=1):
-        if seq_id > 3:
+        if seq_id > 10:
             break
         print(f"\n--- Sequence {seq_id}: {perm} ---")
 
@@ -89,7 +89,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         ordered_test = [task_test_loaders[i] for i in perm]
 
         # Standard Taylor training procedure
-        replay_size = 8
+        replay_size = 100
         replay_buffer = []
         acc_per_task = []
 
