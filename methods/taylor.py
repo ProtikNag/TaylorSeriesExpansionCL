@@ -1,14 +1,12 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from itertools import permutations
-from der import ReplayBuffer
 from utils import evaluate, estimate_diag_hessian_exact, clone_model
 import random
 import itertools
 import pandas as pd
 import matplotlib.pyplot as plt
-from der import ReplayBuffer, train_der_model, run_der_experiments
+from methods.der import train_der_model, run_der_experiments
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
