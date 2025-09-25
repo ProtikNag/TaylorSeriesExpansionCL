@@ -2,15 +2,15 @@
 #SBATCH --job-name=taylor
 #SBATCH -N 1         			## Compute None (Number of computers)
 #SBATCH -n 24 	     			## CPU Cores 
-#SBATCH --gres=gpu:2 			## Run on 2 GPUs
+#SBATCH --gres=gpu:1 			## Run on 2 GPUs
 #SBATCH --output job%j.%N.out
 #SBATCH --error job%j.%N.err
-#SBATCH -p gpu-v100-32gb
+#SBATCH -p gpu
 
 hostname
 date
 
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=0
 
 module load cuda/12.3
 module load python3/anaconda/2023.9
