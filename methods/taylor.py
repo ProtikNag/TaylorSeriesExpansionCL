@@ -76,7 +76,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
     print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
     for seq_id, perm in enumerate(itertools.permutations(task_indices), start=1):
-        if seq_id > 30:
+        if seq_id > 3:
             break
         print(f"\n--- Sequence {seq_id}: {perm} ---")
 
@@ -101,7 +101,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                                                     ordered_train, ordered_test,
                                                     num_epochs, lr, device)
 
-            combined_dataset = [ordered_train[i].dataset for i in task_group] + replay_buffer
+            combined_dataset = [ordered_train[i].dataset for i in task_group] + replay_buffer      # combined data is needed for global update calculation
             combined_loader = torch.utils.data.DataLoader(
                 torch.utils.data.ConcatDataset(combined_dataset),
                 batch_size=64, shuffle=True

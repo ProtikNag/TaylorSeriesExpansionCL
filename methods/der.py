@@ -87,7 +87,7 @@ def run_der_experiments(model, task_train_loaders, task_test_loaders,
     print(f"=== Running DER experiment across {len(list(permutations(task_indices)))} permutations ===")
 
     for seq_id, perm in enumerate(permutations(task_indices), start=1):
-        if seq_id > 30:
+        if seq_id > 3:
             break
 
         print(f"\n--- DER Sequence {seq_id}: {perm} ---")
