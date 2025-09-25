@@ -1,0 +1,25 @@
+node242
+Thu Sep 25 01:03:52 EDT 2025
+Python 3.11.5
+Using device: cuda
+Running experiment with: Namespace(dataset='SplitMNIST', num_tasks=5, group_size=2, batch_size=64, epochs=5, lr=0.01, ewc_lambda=500.0, lambda_reg=100.0, alpha=0.5, methods=['taylor', 'lambda_reg', '5'])
+=== Running Taylor-series experiment across 120 permutations ===
+
+--- Sequence 1: (0, 1, 2, 3, 4) ---
+
+--- Sequence 2: (0, 1, 2, 4, 3) ---
+
+--- Sequence 3: (0, 1, 3, 2, 4) ---
+Saved results to taylor_permutation_results.csv
+Saved boxplot to taylor_performance_boxplot.pdf
+
+=== Running standalone DER experiments in parallel ===
+=== Running DER experiment across 120 permutations ===
+
+--- DER Sequence 1: (0, 1, 2, 3, 4) ---
+
+--- DER Sequence 2: (0, 1, 2, 4, 3) ---
+
+--- DER Sequence 3: (0, 1, 3, 2, 4) ---
+Saved DER results to der_permutation_results.csv
+Saved DER boxplot to der_performance_boxplot.pdf
