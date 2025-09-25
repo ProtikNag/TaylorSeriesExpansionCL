@@ -8,49 +8,14 @@ import random
 import itertools
 import pandas as pd
 import matplotlib.pyplot as plt
+from der import ReplayBuffer, train_der_model, run_der_experiments
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
                       alpha=0.5, beta=0.5, buffer_size=500):
-    model = clone_model(base_model).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    buffer = ReplayBuffer(capacity=buffer_size, device=device)
-
-    model.train()
-    for epoch in range(num_epochs):
-        for task_id in task_perm:
-            for inputs, labels in train_loaders[task_id]:
-                inputs, labels = inputs.to(device), labels.to(device)
-                optimizer.zero_grad()
-
-                # Forward on current batch
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-
-                # Replay from buffer (DER++)
-                replay = buffer.sample(batch_size=len(labels))
-                if replay is not None:
-                    x_buf, y_buf, z_buf = replay
-                    out_buf = model(x_buf)
-
-                    # Logit matching loss (distillation)
-                    distill_loss = torch.nn.functional.mse_loss(out_buf, z_buf)
-                    loss += alpha * distill_loss
-
-                    # CE loss on buffer labels (DER++)
-                    ce_loss = criterion(out_buf, y_buf)
-                    loss += beta * ce_loss
-
-                loss.backward()
-                optimizer.step()
-
-                # Store current samples in buffer
-                with torch.no_grad():
-                    logits = outputs.detach()
-                    for x, y, z in zip(inputs, labels, logits):
-                        buffer.add_sample(x.cpu(), y.cpu(), z.cpu())
-
+    model = train_der_model(base_model, task_perm, train_loaders,
+                           num_epochs, lr, device,
+                           alpha=alpha, beta=beta, buffer_size=buffer_size)
     return model
 
 
@@ -113,6 +78,8 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
     print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
     for seq_id, perm in enumerate(itertools.permutations(task_indices), start=1):
+        if seq_id > 30:
+            break
         print(f"\n--- Sequence {seq_id}: {perm} ---")
 
         # Reorder loaders by permutation
@@ -123,7 +90,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         local_model = clone_model(model).to(device)
 
         # Standard Taylor training procedure
-        replay_size = 30
+        replay_size = 8
         replay_buffer = []
         acc_per_task = []
 
@@ -174,9 +141,13 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
     df[[f"Task{i+1}" for i in range(num_tasks)]].boxplot()
     plt.title("Taylor-Series Update Performance Variability Across Task Orders")
     plt.ylabel("Accuracy (%)")
-    plt.savefig("taylor_performance_boxplot.pdf")
+    plt.savefig("taylor_permutation_boxplot.pdf")
     plt.close()
 
     print("Saved boxplot to taylor_performance_boxplot.pdf")
+
+    print("\n=== Running standalone DER experiments in parallel ===")
+    _, der_df = run_der_experiments(model, task_train_loaders, task_test_loaders,
+                                    num_epochs=num_epochs, lr=lr, device=device)
 
     return model, df
