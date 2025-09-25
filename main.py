@@ -8,8 +8,11 @@ from models import get_model
 from methods.naive import train_naive
 from methods.taylor import train_taylor
 from methods.linear import train_linear
-from utils import compute_avg_accuracy, compute_avg_forgetting, save_model_and_metrics, load_model_and_metrics
+from utils import compute_avg_accuracy, compute_avg_forgetting, save_model_and_metrics, load_model_and_metrics, set_seed
 import numpy as np
+
+
+set_seed(42)
 
 
 def plot_results(method_names, acc_matrices, tag=""):
@@ -50,9 +53,9 @@ def main(args):
         # data = ContinualCIFAR100(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=3)
     elif args.dataset == "SplitMNIST":
         total_classes = 10
-        # data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size)
+        data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size)
         # Debug mode for quick testing
-        data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=300)
+        # data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=1000)
     else:
         raise NotImplementedError(f"Dataset {args.dataset} not supported.")
 

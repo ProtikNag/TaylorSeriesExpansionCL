@@ -1,56 +1,19 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from itertools import permutations
-from der import ReplayBuffer
 from utils import evaluate, estimate_diag_hessian_exact, clone_model
 import random
 import itertools
 import pandas as pd
 import matplotlib.pyplot as plt
+from methods.der import train_der_model, run_der_experiments
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
                       alpha=0.5, beta=0.5, buffer_size=500):
-    model = clone_model(base_model).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    buffer = ReplayBuffer(capacity=buffer_size, device=device)
-
-    model.train()
-    for epoch in range(num_epochs):
-        for task_id in task_perm:
-            for inputs, labels in train_loaders[task_id]:
-                inputs, labels = inputs.to(device), labels.to(device)
-                optimizer.zero_grad()
-
-                # Forward on current batch
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-
-                # Replay from buffer (DER++)
-                replay = buffer.sample(batch_size=len(labels))
-                if replay is not None:
-                    x_buf, y_buf, z_buf = replay
-                    out_buf = model(x_buf)
-
-                    # Logit matching loss (distillation)
-                    distill_loss = torch.nn.functional.mse_loss(out_buf, z_buf)
-                    loss += alpha * distill_loss
-
-                    # CE loss on buffer labels (DER++)
-                    ce_loss = criterion(out_buf, y_buf)
-                    loss += beta * ce_loss
-
-                loss.backward()
-                optimizer.step()
-
-                # Store current samples in buffer
-                with torch.no_grad():
-                    logits = outputs.detach()
-                    for x, y, z in zip(inputs, labels, logits):
-                        buffer.add_sample(x.cpu(), y.cpu(), z.cpu())
-
+    model = train_der_model(base_model, task_perm, train_loaders,
+                           num_epochs, lr, device,
+                           alpha=alpha, beta=beta, buffer_size=buffer_size)
     return model
 
 
@@ -103,12 +66,16 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
             delta = h_inv * (lambda_reg * (local_model.state_dict()[name] - param) - grads[name])
             param.add_(delta)
 
+    return global_model
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                  num_epochs=30, lr=0.01, lambda_reg=100.0, device='cuda'):
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []
+
+    # Clone fresh model
+    global_model = clone_model(model).to(device)
 
     print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
@@ -119,11 +86,8 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         ordered_train = [task_train_loaders[i] for i in perm]
         ordered_test = [task_test_loaders[i] for i in perm]
 
-        # Clone fresh model for this run
-        local_model = clone_model(model).to(device)
-
         # Standard Taylor training procedure
-        replay_size = 30
+        replay_size = 5000
         replay_buffer = []
         acc_per_task = []
 
@@ -131,21 +95,21 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                        for i in range(0, num_tasks, group_size)]
 
         for t, task_group in enumerate(task_groups):
-            local_base_model = clone_model(local_model)
+            local_base_model = clone_model(global_model).to(device)
             local_trained = select_best_permutation(local_base_model, task_group,
                                                     ordered_train, ordered_test,
                                                     num_epochs, lr, device)
 
-            combined_dataset = [ordered_train[i].dataset for i in task_group] + replay_buffer
+            combined_dataset = [ordered_train[i].dataset for i in task_group] + replay_buffer      # combined data is needed for global update calculation
             combined_loader = torch.utils.data.DataLoader(
                 torch.utils.data.ConcatDataset(combined_dataset),
                 batch_size=64, shuffle=True
             )
 
             if t == 0:
-                local_model.load_state_dict(local_trained.state_dict())
+                global_model.load_state_dict(local_trained.state_dict())
             else:
-                taylor_global_update(local_model, local_trained,
+                global_model = taylor_global_update(global_model, local_trained,
                                      combined_loader, lambda_reg, device)
 
             replay_buffer.extend([ordered_train[i].dataset for i in task_group])
@@ -153,7 +117,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
             if len(replay_buffer) > replay_size:
                 replay_buffer = replay_buffer[-replay_size:]
 
-            accs = [evaluate(local_model, ordered_test[tid], device=device)
+            accs = [evaluate(global_model, ordered_test[tid], device=device)
                     for tid in range(max(task_group) + 1)]
             acc_per_task.append(accs)
 
@@ -174,9 +138,13 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
     df[[f"Task{i+1}" for i in range(num_tasks)]].boxplot()
     plt.title("Taylor-Series Update Performance Variability Across Task Orders")
     plt.ylabel("Accuracy (%)")
-    plt.savefig("taylor_performance_boxplot.pdf")
+    plt.savefig("taylor_permutation_boxplot.pdf")
     plt.close()
 
     print("Saved boxplot to taylor_performance_boxplot.pdf")
+
+    print("\n=== Running standalone DER experiments in parallel ===")
+    _, der_df = run_der_experiments(model, task_train_loaders, task_test_loaders,
+                                    num_epochs=num_epochs, lr=lr, device=device)
 
     return model, df
