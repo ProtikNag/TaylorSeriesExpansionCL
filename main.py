@@ -5,9 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 from data import ContinualCIFAR100, ContinualSplitMNIST
 from models import get_model
-from methods.naive import train_naive
 from methods.taylor import train_taylor
-from methods.linear import train_linear
 from utils import compute_avg_accuracy, compute_avg_forgetting, save_model_and_metrics, load_model_and_metrics, set_seed
 import numpy as np
 
@@ -66,46 +64,12 @@ def main(args):
     all_accs = []
     all_names = []
 
-    if "naive" in args.methods:
-        model_naive, acc_naive = load_model_and_metrics("Naive", get_model, num_classes_per_task, tag)
-        if model_naive is None:
-            model_naive = get_model(num_classes=num_classes_per_task)
-            model_naive, acc_naive = train_naive(model_naive, train_loaders, test_loaders,
-                                                 num_epochs=args.epochs, lr=args.lr, device=device)
-            save_model_and_metrics("Naive", model_naive, acc_naive, tag)
-        print_metrics("Naive", acc_naive)
-        all_accs.append(acc_naive)
-        all_names.append("Naive")
-
-    if "ewc" in args.methods:
-        model_ewc, acc_ewc = load_model_and_metrics("EWC", get_model, num_classes_per_task, tag)
-        if model_ewc is None:
-            model_ewc = get_model(num_classes=num_classes_per_task)
-            model_ewc, acc_ewc = train_ewc(model_ewc, train_loaders, test_loaders,
-                                           num_epochs=args.epochs, lr=args.lr,
-                                           ewc_lambda=args.ewc_lambda, device=device)
-            save_model_and_metrics("EWC", model_ewc, acc_ewc, tag)
-        print_metrics("EWC", acc_ewc)
-        all_accs.append(acc_ewc)
-        all_names.append("EWC")
 
     if "taylor" in args.methods:
         model_taylor = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
         model_taylor, acc_taylor = train_taylor(model_taylor, train_loaders, test_loaders,
                                                     group_size=args.group_size, num_epochs=args.epochs,
                                                     lr=args.lr, lambda_reg=args.lambda_reg, device=device)
-
-    if "linear" in args.methods:
-        model_linear, acc_linear = load_model_and_metrics("Linear", get_model, num_classes_per_task, tag)
-        if model_linear is None:
-            model_linear = get_model(num_classes=num_classes_per_task)
-            model_linear, acc_linear = train_linear(model_linear, train_loaders, test_loaders,
-                                                    group_size=args.group_size, num_epochs=args.epochs,
-                                                    lr=args.lr, alpha=args.alpha, device=device)
-            save_model_and_metrics("Linear", model_linear, acc_linear, tag)
-        print_metrics("Linear", acc_linear)
-        all_accs.append(acc_linear)
-        all_names.append("Linear")
 
 
 if __name__ == "__main__":

@@ -76,13 +76,12 @@ def train_der_model(base_model, task_perm, train_loaders, num_epochs, lr, device
     return model
 
 
-def run_der_experiments(model, task_train_loaders, task_test_loaders,
+def run_der_experiments(model, task_train_loaders, task_test_loaders, buffer_size=500,
                         num_epochs=30, lr=0.01, device="cuda"):
     """Run DER experiments across all permutations of tasks."""
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []
-    buffer_size = 5000
 
     print(f"=== Running DER experiment across {len(list(permutations(task_indices)))} permutations ===")
 
