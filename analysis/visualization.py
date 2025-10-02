@@ -127,8 +127,8 @@ caption = ("Figure. Distribution of accuracies per absolute task. Each violin sh
            "across task sequences for DER and TAYLOR. Quartile lines inside violins are solid black.")
 # plt.figtext(0.5, -0.03, caption, wrap=True, ha="center", fontsize=FONT_SIZE)
 
-out_violin = os.path.join(OUT_DIR, "violin_combined_tasks.pdf")
-fig.savefig(out_violin, bbox_inches="tight", format="pdf", dpi=FIG_DPI)
+out_violin = os.path.join(OUT_DIR, "violin_combined_tasks.svg")
+fig.savefig(out_violin, bbox_inches="tight", format="svg", dpi=FIG_DPI)
 plt.close(fig)
 print(f"Saved violin plot to: {out_violin}")
 
@@ -215,9 +215,9 @@ def make_boxplot_for_file(df, method_name, out_name):
     # plt.figtext(0.5, -0.02, caption_b, wrap=True, ha="center", fontsize=FONT_SIZE)
 
     out_path = os.path.join(OUT_DIR, out_name)
-    fig_b.savefig(out_path, bbox_inches="tight", format="pdf", dpi=FIG_DPI)
+    fig_b.savefig(out_path, bbox_inches="tight", format="svg", dpi=FIG_DPI)
     plt.close(fig_b)
     print(f"Saved boxplot to: {out_path}")
 
-make_boxplot_for_file(der_df, "DER", "boxplot_DER_tasks_custom.pdf")
-make_boxplot_for_file(taylor_df, "TAYLOR", "boxplot_TAYLOR_tasks_custom.pdf")
+make_boxplot_for_file(der_df, "DER", "boxplot_DER_tasks_custom.svg")
+make_boxplot_for_file(taylor_df, "TAYLOR", "boxplot_TAYLOR_tasks_custom.svg")
