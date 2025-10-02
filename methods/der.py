@@ -103,17 +103,7 @@ def run_der_experiments(model, task_train_loaders, task_test_loaders, buffer_siz
         "sequence": [r["sequence"] for r in results],
         **{f"Task{t+1}": [r["accuracies"][t] for r in results] for t in range(num_tasks)}
     })
-    df.to_csv("der_permutation_results.csv", index=False)
+    df.to_csv("./results/der_permutation_results.csv", index=False)
     print("Saved DER results to der_permutation_results.csv")
-
-    # Boxplot
-    plt.figure(figsize=(8, 6))
-    df[[f"Task{i+1}" for i in range(num_tasks)]].boxplot()
-    plt.title("DER++ Performance Variability Across Task Orders")
-    plt.ylabel("Accuracy (%)")
-    plt.savefig("der_permutation_boxplot.pdf")
-    plt.close()
-
-    print("Saved DER boxplot to der_performance_boxplot.pdf")
 
     return model, df

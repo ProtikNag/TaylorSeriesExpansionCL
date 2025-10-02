@@ -130,21 +130,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         **{f"Task{t+1}": [r["accuracies"][t] for r in results] for t in range(num_tasks)}
     })
 
-    df.to_csv("taylor_permutation_results.csv", index=False)
+    df.to_csv("./results/taylor_permutation_results.csv", index=False)
     print("Saved results to taylor_permutation_results.csv")
-
-    # Boxplot
-    plt.figure(figsize=(8, 6))
-    df[[f"Task{i+1}" for i in range(num_tasks)]].boxplot()
-    plt.title("Taylor-Series Update Performance Variability Across Task Orders")
-    plt.ylabel("Accuracy (%)")
-    plt.savefig("taylor_permutation_boxplot.pdf")
-    plt.close()
-
-    print("Saved boxplot to taylor_performance_boxplot.pdf")
-
-    print("\n=== Running standalone DER experiments in parallel ===")
-    _, der_df = run_der_experiments(model, task_train_loaders, task_test_loaders, buffer_size=replay_size,
-                                    num_epochs=num_epochs, lr=lr, device=device)
 
     return model, df
