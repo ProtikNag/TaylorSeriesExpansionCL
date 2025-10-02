@@ -87,7 +87,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         ordered_test = [task_test_loaders[i] for i in perm]
 
         # Standard Taylor training procedure
-        replay_size = 5000
+        replay_size = 1000
         replay_buffer = []
         acc_per_task = []
 
