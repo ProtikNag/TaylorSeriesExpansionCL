@@ -1,205 +1,223 @@
-"""
-plot_permutation_boxplots.py
-
-Reads a CSV of permutations (one row per permutation; 'sequence' column
-is like "(0, 1, 2, 3, 4)" and Task1..Task5 hold the accuracy/metric
-for the 1st,2nd,...,5th task in that permutation). Produces publication-quality
-boxplots aligned to absolute task identity and computes robust variance
-(ignoring extreme values).
-
-Outputs:
- - figures/boxplot_tasks.pdf and .png
- - figures/boxplot_tasks_trimmed.png (alternate)
- - figures/variance_table.csv
-
-Author: adapted for your dataset
-"""
-
-import ast
-from pathlib import Path
-import numpy as np
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import trim_mean
+from matplotlib.lines import Line2D
 
-# ------------------------- USER CONFIG -------------------------
-CSV_PATH = "der_permutation_results.csv"   # set path to your CSV
-OUT_DIR = Path("figures")
-OUT_DIR.mkdir(exist_ok=True)
+# ---------- Configuration ----------
+DER_CSV = "../results/der_permutation_results.csv"
+TAYLOR_CSV = "../results/taylor_permutation_results.csv"
+OUT_DIR = "../figures"
+os.makedirs(OUT_DIR, exist_ok=True)
 
-# Appearance settings (academic)
+FIG_DPI = 1000
 FONT_FAMILY = "Times New Roman"
-FONT_SIZE = 12
-FIGSIZE = (7.0, 4.5)     # compact, wide figure
-TRIM_PERCENT = 5.0       # percent trim for variance (per tail). Set 0 to disable trimming
-SHOW_FLIERS = False      # if False, matplotlib will hide the plotted outliers
-COLOR_PALETTE = "tab10"  # standard matplotlib/seaborn palette
-RANDOM_SEED = 0
-# ----------------------------------------------------------------
+FONT_SIZE = 20
+FIGSIZE_VIOLIN = (10, 6)
+FIGSIZE_BOX = (10, 6)
 
-# set global matplotlib params
-plt.rcParams.update({
-    "font.family": FONT_FAMILY,
-    "font.size": FONT_SIZE,
-    "axes.titlesize": FONT_SIZE,
-    "axes.labelsize": FONT_SIZE,
-    "legend.fontsize": FONT_SIZE - 1,
-    "xtick.labelsize": FONT_SIZE - 1,
-    "ytick.labelsize": FONT_SIZE - 1,
-})
+# Colors
+VIOLIN_PALETTE = ["#2B547E", "#D87C5D"]    # DER (blue), TAYLOR (orange)
 
-def parse_sequence_column(s):
-    """Parse string like '(0, 1, 2, 3, 4)' into a tuple of ints."""
-    if pd.isna(s):
-        return ()
-    # ast.literal_eval is safe for this format
-    try:
-        t = ast.literal_eval(s)
-        return tuple(int(x) for x in t)
-    except Exception:
-        # fallback: strip punctuation and split
-        s2 = s.strip("()[] ")
-        return tuple(int(x) for x in s2.split(",") if x.strip() != "")
+# Boxplot styling requested
+# Interpreted "134686" as hex color "#134686"
+BOX_EDGE_COLOR = "#134686"   # box outline color (user requested)
+BOX_FILL_COLOR = "white"
+BOX_MEDIAN_COLOR = "#2F5755"  # user-provided green tone for median
 
-def load_and_remap(csv_path):
-    """Load CSV and remap Task1..TaskK entries into per-absolute-task lists."""
-    df = pd.read_csv(csv_path)
-    # find columns named like Task1, Task2, ...
-    task_pos_cols = [c for c in df.columns if c.lower().startswith("task")]
-    task_pos_cols = sorted(task_pos_cols, key=lambda x: int("".join(filter(str.isdigit, x)) or 0))
-    if "sequence" not in df.columns:
-        raise ValueError("'sequence' column not found in CSV.")
-    K = len(task_pos_cols)
-    # determine absolute task IDs (assume permutations contain ints 0..K-1)
-    per_task_values = {}  # map absolute_task_id -> list of values
-    for idx, row in df.iterrows():
-        seq = parse_sequence_column(row["sequence"])
-        if len(seq) != K:
-            # tolerate extra whitespace or different formatting by skipping or warning
-            raise ValueError(f"Row {idx}: parsed sequence length {len(seq)} != number of Task columns ({K}).")
-        for pos_idx, taskcol in enumerate(task_pos_cols):
-            abs_task = int(seq[pos_idx])  # absolute task id at this position
-            val = row[taskcol]
-            per_task_values.setdefault(abs_task, []).append(float(val))
-    # ensure tasks are ordered by absolute task id
-    max_task = max(per_task_values.keys())
-    task_ids = sorted(per_task_values.keys())
-    # convert to DataFrame for easier plotting
-    per_task_df = pd.DataFrame({
-        f"Task {tid}": per_task_values[tid] for tid in task_ids
-    })
-    return per_task_df
+# Extreme values (fliers) color: make them black
+FLIER_COLOR = "black"
 
-def compute_trimmed_variance(series, trim_pct):
-    """Compute variance after trimming `trim_pct` percent each tail (trim_pct in [0,50))."""
-    if trim_pct <= 0:
-        return float(np.nanvar(series, ddof=1))
-    p = trim_pct / 100.0
-    # compute lower and upper percentiles
-    lo = np.percentile(series, p*100)
-    hi = np.percentile(series, 100 - p*100)
-    trimmed = series[(series >= lo) & (series <= hi)]
-    # if too few values, return NaN
-    if len(trimmed) < 2:
-        return float(np.nan)
-    return float(np.var(trimmed, ddof=1))
+TASK_COLS = ["Task1", "Task2", "Task3", "Task4", "Task5"]
 
-def make_boxplot(per_task_df, out_path, showfliers=False, dpi=300):
-    """Create a compact boxplot (no excessive whitespace)."""
-    sns.set_style("whitegrid")
-    palette = sns.color_palette(COLOR_PALETTE, n_colors=len(per_task_df.columns))
-    fig, ax = plt.subplots(figsize=FIGSIZE)
-    # boxplot: use notches to convey CI of median
-    box = ax.boxplot(
-        [per_task_df[c].dropna().values for c in per_task_df.columns],
-        labels=per_task_df.columns,
-        notch=False,
-        patch_artist=True,
-        showfliers=showfliers,
-        widths=0.6,
-        medianprops=dict(linewidth=1.2),
-        boxprops=dict(linewidth=0.8),
-        whiskerprops=dict(linewidth=0.8),
-        capprops=dict(linewidth=0.8),
-        )
-    # fill boxes with palette
-    for patch, color in zip(box["boxes"], palette):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.9)
-    # minimal axes decorations
-    ax.set_ylabel("Accuracy (%)")
-    ax.set_xlabel("Task (absolute identity)")
-    ax.set_title("Performance variability across task orderings (per absolute task)")
-    # reduce whitespace and make layout tight
-    plt.tight_layout(pad=0.5)
-    fig.savefig(out_path, dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
+# New labels as requested
+TASK_LABELS = ["1st task", "2nd task", "3rd task", "4th task", "5th task"]
+task_label_map = {f"Task{i+1}": TASK_LABELS[i] for i in range(len(TASK_COLS))}
 
-def main():
-    np.random.seed(RANDOM_SEED)
-    per_task_df = load_and_remap(CSV_PATH)
-    # print basic summary
-    print("Per-task counts and basic stats:")
-    print(per_task_df.describe().T[["count", "mean", "std", "min", "max"]])
+# ---------- Helper ----------
+def parse_accuracy(x):
+    if pd.isna(x):
+        return x
+    if isinstance(x, str):
+        s = x.strip().replace("%", "").replace(",", "")
+        try:
+            return float(s)
+        except:
+            return pd.NA
+    return float(x)
 
-    # compute trimmed variances
-    variances = []
-    for col in per_task_df.columns:
-        series = per_task_df[col].dropna().values
-        trimmed_var = compute_trimmed_variance(series, TRIM_PERCENT)
-        raw_var = float(np.var(series, ddof=1))
-        variances.append({
-            "task": col,
-            "n": len(series),
-            f"variance_trim{TRIM_PERCENT}%": trimmed_var,
-            "variance_raw": raw_var,
-            "mean": float(np.mean(series)),
-            "median": float(np.median(series))
-        })
-    var_df = pd.DataFrame(variances).set_index("task")
-    var_csv = OUT_DIR / "variance_table.csv"
-    var_df.to_csv(var_csv)
-    print(f"\nSaved variance table to {var_csv}")
-    print(var_df)
+# ---------- Load data ----------
+der_df = pd.read_csv(DER_CSV)
+taylor_df = pd.read_csv(TAYLOR_CSV)
 
-    # figure: main boxplot (hide extreme fliers for visual clarity)
-    out_pdf = OUT_DIR / "boxplot_tasks.pdf"
-    out_png = OUT_DIR / "boxplot_tasks.png"
-    make_boxplot(per_task_df, out_pdf, showfliers=SHOW_FLIERS)
-    # also save png
-    make_boxplot(per_task_df, out_png, showfliers=SHOW_FLIERS)
-    print(f"Saved figures to {out_pdf} and {out_png}")
+der_df["Method"] = "DER"
+taylor_df["Method"] = "TAYLOR"
 
-    # optional: also save a version where we first winsorize or trim extremes before plotting
-    # produce trimmed DataFrame for plotting (clip to [p, 100-p] percentiles)
-    if TRIM_PERCENT > 0:
-        trimmed_df = per_task_df.copy()
-        p = TRIM_PERCENT
-        for col in per_task_df.columns:
-            lo = np.percentile(per_task_df[col].dropna(), p)
-            hi = np.percentile(per_task_df[col].dropna(), 100 - p)
-            # winsorize by clipping
-            trimmed_df[col] = np.clip(per_task_df[col], lo, hi)
-        out_png_trim = OUT_DIR / "boxplot_tasks_trimmed.png"
-        make_boxplot(trimmed_df, out_png_trim, showfliers=False)
-        print(f"Saved trimmed figure to {out_png_trim}")
+df_comb = pd.concat([der_df, taylor_df], ignore_index=True)
 
-    # Return a suggested figure caption (printed)
-    caption = (
-        "Figure X: Distribution of final accuracy (in %) for each absolute task across "
-        "all permutations (N = {}). Each box summarizes the central 50% of the distribution "
-        "(interquartile range); the horizontal line inside the box is the median. "
-        "Whiskers extend to the most extreme points inside 1.5×IQR. Extreme outliers were "
-        f"{'hidden in the plotted boxes for clarity' if not SHOW_FLIERS else 'shown'}; "
-        f"variance values reported in the accompanying table are computed after trimming the "
-        f"top/bottom {TRIM_PERCENT:.0f}% of values to reduce the influence of extreme permutations. "
-        "This presentation maps each recorded value back to the task's absolute identity (Task 0..), "
-        "so that distributions are comparable across permutations of the same underlying task. "
-        "Plot styling uses Times New Roman, font size 12, compact layout optimized for publication."
-    ).format(int(var_df["n"].iloc[0]))
-    print("\nSuggested caption for the figure (copy into your paper):\n")
-    print(caption)
+# Melt to long format for violin
+df_long = df_comb.melt(
+    id_vars=["sequence", "Method"],
+    value_vars=TASK_COLS,
+    var_name="Task",
+    value_name="Accuracy"
+)
+df_long["Accuracy"] = df_long["Accuracy"].apply(parse_accuracy).astype(float)
+df_long["TaskLabel"] = df_long["Task"].map(task_label_map)
 
-if __name__ == "__main__":
-    main()
+# ---------- Combined Violin Plot ----------
+sns.set_theme(style="ticks")  # remove grid background
+plt.rc("font", family=FONT_FAMILY, size=FONT_SIZE+4)
+
+fig, ax = plt.subplots(figsize=FIGSIZE_VIOLIN, dpi=FIG_DPI)
+
+sns.violinplot(
+    data=df_long,
+    x="TaskLabel",
+    y="Accuracy",
+    hue="Method",
+    split=True,
+    inner="quartile",
+    palette=VIOLIN_PALETTE,
+    density_norm="width",
+    ax=ax
+)
+
+# ax.set_title("Comparison of distributions per task", fontsize=FONT_SIZE + 2)
+# ax.set_xlabel("Task ", fontsize=FONT_SIZE)
+ax.set_ylabel("Accuracy (%)", fontsize=FONT_SIZE+4)
+ax.grid(False)  # ensure no gridlines
+
+# Ensure ticks are explicitly set before setting labels to avoid UserWarning
+tick_positions = list(range(len(TASK_LABELS)))
+ax.set_xticks(tick_positions)
+ax.set_xticklabels(TASK_LABELS)
+
+# --- Make quartile lines black and solid ---
+# The quartile lines drawn by seaborn for violinplot are stored in ax.lines.
+# We'll set relevant lines to black solid. This may affect a few line elements,
+# but the quartiles will be clearly visible as solid black.
+for ln in ax.lines:
+    ln.set_color("black")
+    ln.set_linestyle("-")
+    ln.set_linewidth(1.2)
+
+# Method legend inside bottom-right, transparent
+method_leg = ax.legend(title="Method", loc="lower right", frameon=True)
+method_leg.get_frame().set_alpha(0.0)
+
+# Quartile legend centered below figure.
+# Use a solid black line to represent quartiles (matching the actual quartile lines).
+quartile_handle = Line2D([0], [0], color="black", linestyle="-", linewidth=1.2)
+quartile_leg = ax.legend(
+    handles=[quartile_handle],
+    labels=["Quartiles (25th, median, 75th) — solid black"],
+    loc="lower center",
+    bbox_to_anchor=(0.5, -0.20),
+    frameon=True,
+    fontsize=FONT_SIZE - 1
+)
+quartile_leg.get_frame().set_alpha(0.0)
+
+# Re-add method legend because second legend call replaced it
+ax.add_artist(method_leg)
+
+plt.tight_layout(pad=0.6)
+caption = ("Figure. Distribution of accuracies per absolute task. Each violin shows performance "
+           "across task sequences for DER and TAYLOR. Quartile lines inside violins are solid black.")
+# plt.figtext(0.5, -0.03, caption, wrap=True, ha="center", fontsize=FONT_SIZE)
+
+out_violin = os.path.join(OUT_DIR, "violin_combined_tasks.pdf")
+fig.savefig(out_violin, bbox_inches="tight", format="pdf", dpi=FIG_DPI)
+plt.close(fig)
+print(f"Saved violin plot to: {out_violin}")
+
+# ---------- Separate Boxplots (custom colors) ----------
+def make_boxplot_for_file(df, method_name, out_name):
+    df_m = df.melt(id_vars=["sequence"], value_vars=TASK_COLS,
+                   var_name="Task", value_name="Accuracy")
+    df_m["Accuracy"] = df_m["Accuracy"].apply(parse_accuracy).astype(float)
+    df_m["TaskLabel"] = df_m["Task"].map(task_label_map)
+
+    fig_b, ax_b = plt.subplots(figsize=FIGSIZE_BOX, dpi=FIG_DPI)
+
+    # Boxplot style with requested colors
+    boxprops = dict(facecolor=BOX_FILL_COLOR, edgecolor=BOX_EDGE_COLOR, linewidth=1.6)
+    whiskerprops = dict(color=BOX_EDGE_COLOR, linewidth=1.2)
+    capprops = dict(color=BOX_EDGE_COLOR, linewidth=1.2)
+    medianprops = dict(color=BOX_MEDIAN_COLOR, linewidth=1.8)
+    # Fliers (extreme values) should be black as requested. Use black markers.
+    flierprops = dict(marker='o', markerfacecolor=FLIER_COLOR, markeredgecolor=FLIER_COLOR, markersize=4, alpha=0.9)
+
+    sns.boxplot(
+        data=df_m,
+        x="TaskLabel",
+        y="Accuracy",
+        color=BOX_FILL_COLOR,
+        boxprops=boxprops,
+        whiskerprops=whiskerprops,
+        capprops=capprops,
+        medianprops=medianprops,
+        flierprops=flierprops,
+        ax=ax_b
+    )
+
+    # Ensure ticks are explicitly set before setting labels to avoid UserWarning
+    tick_positions = list(range(len(TASK_LABELS)))
+    ax_b.set_xticks(tick_positions)
+    ax_b.set_xticklabels(TASK_LABELS)
+
+    # Ensure patches have the correct edge color & linewidth (sometimes seaborn redraws)
+    for patch in ax_b.artists:
+        patch.set_edgecolor(BOX_EDGE_COLOR)
+        patch.set_facecolor(BOX_FILL_COLOR)
+        patch.set_linewidth(1.6)
+
+    # Also update the lines (whiskers/caps/medians) to ensure colors are applied
+    for line in ax_b.lines:
+        # Default to BOX_EDGE_COLOR for lines; median lines will be overwritten by medianprops if needed.
+        line.set_color(BOX_EDGE_COLOR)
+        line.set_linewidth(1.2)
+
+    # Overwrite median lines color with BOX_MEDIAN_COLOR by matching horizontal lines to median values
+    medians_by_task = df_m.groupby("TaskLabel")["Accuracy"].median().to_dict()
+    for line in ax_b.lines:
+        y = line.get_ydata()
+        if len(y) == 2 and abs(y[0] - y[1]) < 1e-8:
+            yval = float(y[0])
+            for med in medians_by_task.values():
+                if abs(yval - med) < 1e-6:
+                    line.set_color(BOX_MEDIAN_COLOR)
+                    line.set_linewidth(1.8)
+                    break
+
+    # Ensure fliers (extreme values) remain black by adjusting PathCollections (if any)
+    # PathCollections typically represent fliers; set their face/edge colors to black.
+    for coll in ax_b.collections:
+        try:
+            offsets = coll.get_offsets()
+            if offsets is None or len(offsets) == 0:
+                continue
+            # Heuristic: fliers usually produce many small points; we'll set these collections to black.
+            coll.set_facecolor(FLIER_COLOR)
+            coll.set_edgecolor(FLIER_COLOR)
+        except Exception:
+            # some collections may not behave the same way across Matplotlib versions; ignore errors
+            pass
+
+    ax_b.set_title(f"{method_name} performance across tasks", fontsize=FONT_SIZE + 1)
+    ax_b.set_xlabel("Task", fontsize=FONT_SIZE+4)
+    ax_b.set_ylabel("Accuracy (%)", fontsize=FONT_SIZE+4)
+    ax_b.grid(False)  # remove gridlines
+
+    plt.tight_layout(pad=0.6)
+    caption_b = f"{method_name} per-task accuracy distributions across sequences. Box = 25th-75th; line = median (colored). Extreme values are black."
+    # plt.figtext(0.5, -0.02, caption_b, wrap=True, ha="center", fontsize=FONT_SIZE)
+
+    out_path = os.path.join(OUT_DIR, out_name)
+    fig_b.savefig(out_path, bbox_inches="tight", format="pdf", dpi=FIG_DPI)
+    plt.close(fig_b)
+    print(f"Saved boxplot to: {out_path}")
+
+make_boxplot_for_file(der_df, "DER", "boxplot_DER_tasks_custom.pdf")
+make_boxplot_for_file(taylor_df, "TAYLOR", "boxplot_TAYLOR_tasks_custom.pdf")
