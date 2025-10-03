@@ -6,12 +6,12 @@ import random
 import itertools
 import pandas as pd
 import matplotlib.pyplot as plt
-from methods.der import train_der_model, run_der_experiments
+from methods.ser import train_ser_model, run_ser_experiments
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
                       alpha=0.5, beta=0.5, buffer_size=500):
-    model = train_der_model(base_model, task_perm, train_loaders,
+    model = train_ser_model(base_model, task_perm, train_loaders,
                            num_epochs, lr, device,
                            alpha=alpha, beta=beta, buffer_size=buffer_size)
     return model
