@@ -6,12 +6,12 @@ import random
 import itertools
 import pandas as pd
 import matplotlib.pyplot as plt
-from methods.ser import train_ser_model, run_ser_experiments
+from methods.er import train_er_model, run_er_experiments
 
 
 def train_local_model(base_model, task_perm, train_loaders, num_epochs, lr, device,
                       alpha=0.5, beta=0.5, buffer_size=500):
-    model = train_ser_model(base_model, task_perm, train_loaders,
+    model = train_er_model(base_model, task_perm, train_loaders,
                            num_epochs, lr, device,
                            alpha=alpha, beta=beta, buffer_size=buffer_size)
     return model
@@ -132,5 +132,8 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
 
     df.to_csv("./results/taylor_permutation_results.csv", index=False)
     print("Saved results to taylor_permutation_results.csv")
+
+    _, _ = run_er_experiments(model, task_train_loaders, task_test_loaders, buffer_size=replay_size,
+                                    num_epochs=num_epochs, lr=lr, device=device)
 
     return model, df
