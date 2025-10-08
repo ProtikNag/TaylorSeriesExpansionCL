@@ -1,5 +1,5 @@
 #!/bin/sh
-#SBATCH --job-name=taylor
+#SBATCH --job-name=er
 #SBATCH -N 1         			## Compute None (Number of computers)
 #SBATCH -n 24 	     			## CPU Cores 
 #SBATCH --gres=gpu:1 			## Run on 2 GPUs
