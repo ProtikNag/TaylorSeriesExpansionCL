@@ -5,7 +5,7 @@ from utils import evaluate, estimate_diag_hessian_exact, clone_model
 import random
 import itertools
 import pandas as pd
-import matplotlib.pyplot as plt
+import math
 from methods.er import train_er_model, run_er_experiments
 
 
@@ -68,17 +68,46 @@ def taylor_global_update(global_model, local_model, train_loader, lambda_reg=100
 
     return global_model
 
+
+def _canonicalize_perm_by_group(perm, group_size):
+    """
+    Return a canonical version of perm where each contiguous group of length group_size
+    is sorted internally (last group may be shorter and is sorted too).
+    This is used to treat intra-group permutations as equivalent.
+    """
+    n = len(perm)
+    grouped = []
+    for i in range(0, n, group_size):
+        group = tuple(sorted(perm[i:i+group_size]))
+        grouped.extend(group)
+    return tuple(grouped)
+
+
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                  num_epochs=30, lr=0.01, lambda_reg=100.0, device='cuda'):
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []
 
+    total_perms = math.factorial(num_tasks)
     print(f"=== Running Taylor-series experiment across {len(list(itertools.permutations(task_indices)))} permutations ===")
 
+    seen = set()
+    canonical_to_accuracies = {}
+    processed_count = 0
+
     for seq_id, perm in enumerate(itertools.permutations(task_indices), start=1):
-        if seq_id >= 5:
-            break
+        canonical = _canonicalize_perm_by_group(perm, group_size)
+
+        if canonical in seen:
+            cached_accs = canonical_to_accuracies[canonical]
+            results.append({"sequence": perm, "accuracies": cached_accs})
+            print(f"Skipped computation for permutation #{seq_id} {perm} (canonical {canonical}) — reused results.")
+            continue
+
+        # Not seen: compute once for this canonical cluster
+        seen.add(canonical)
+        processed_count += 1
 
         # Clone fresh model 
         global_model = clone_model(model).to(device)
@@ -124,7 +153,8 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
                     for tid in range(max(task_group) + 1)]
             acc_per_task.append(accs)
 
-        # record only the final accuracy after all tasks
+        final_accs = acc_per_task[-1]
+        canonical_to_accuracies[canonical] = final_accs
         results.append({"sequence": perm, "accuracies": acc_per_task[-1]})
 
     # Convert results into DataFrame
