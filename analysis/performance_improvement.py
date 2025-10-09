@@ -8,20 +8,20 @@ results_dir = Path("../results")
 figures_dir = Path("../figures")
 figures_dir.mkdir(parents=True, exist_ok=True)
 
-der_csv = results_dir / "der_permutation_results.csv"
+er_csv = results_dir / "er_permutation_results.csv"
 taylor_csv = results_dir / "taylor_permutation_results.csv"
 
-if not der_csv.exists() or not taylor_csv.exists():
-    raise FileNotFoundError(f"Missing CSVs in {results_dir}. Expected: {der_csv}, {taylor_csv}")
+if not er_csv.exists() or not taylor_csv.exists():
+    raise FileNotFoundError(f"Missing CSVs in {results_dir}. Expected: {er_csv}, {taylor_csv}")
 
 # Read
-der = pd.read_csv(der_csv)
+er = pd.read_csv(er_csv)
 taylor = pd.read_csv(taylor_csv)
 
 # Task columns detection (columns starting with "Task"), fallback to all except 'sequence'
-task_cols = [c for c in der.columns if str(c).lower().startswith("task")]
+task_cols = [c for c in er.columns if str(c).lower().startswith("task")]
 if not task_cols:
-    task_cols = [c for c in der.columns if c.lower() not in ("sequence", "seq", "permutation")]
+    task_cols = [c for c in er.columns if c.lower() not in ("sequence", "seq", "permutation")]
 
 # Ensure both have same task cols
 missing = [c for c in task_cols if c not in taylor.columns]
@@ -29,16 +29,16 @@ if missing:
     raise ValueError(f"Task columns {missing} missing in {taylor_csv}")
 
 # Means and stds
-der_mean = der[task_cols].mean(axis=0)
-der_std  = der[task_cols].std(axis=0)
+er_mean = er[task_cols].mean(axis=0)
+er_std  = er[task_cols].std(axis=0)
 tay_mean = taylor[task_cols].mean(axis=0)
 tay_std  = taylor[task_cols].std(axis=0)
 
 # Save summary CSV
 summary = pd.DataFrame({
     "task": task_cols,
-    "der_mean": der_mean.values,
-    "der_std": der_std.values,
+    "er_mean": er_mean.values,
+    "er_std": er_std.values,
     "taylor_mean": tay_mean.values,
     "taylor_std": tay_std.values
 }).set_index("task")
@@ -53,8 +53,8 @@ x = np.arange(len(task_cols))
 width = 0.38
 
 # Bars
-bars1 = ax.bar(x - width/2, der_mean.values, width,
-               yerr=der_std.values, capsize=6, label='DER', linewidth=0.6)
+bars1 = ax.bar(x - width/2, er_mean.values, width,
+               yerr=er_std.values, capsize=6, label='er', linewidth=0.6)
 bars2 = ax.bar(x + width/2, tay_mean.values, width,
                yerr=tay_std.values, capsize=6, label='Taylor', linewidth=0.6)
 
@@ -62,7 +62,7 @@ bars2 = ax.bar(x + width/2, tay_mean.values, width,
 # ax.set_xticks(x)
 # ax.set_xticklabels(task_cols, rotation=35, ha='right', fontsize=10)
 # ax.set_ylabel("Mean accuracy")
-# ax.set_title("Mean accuracy per task: DER vs Taylor", fontsize=13, fontweight='semibold')
+# ax.set_title("Mean accuracy per task: er vs Taylor", fontsize=13, fontweight='semibold')
 
 # Grid, legend, nice spines
 # ax.yaxis.grid(True, linestyle='--', linewidth=0.6, alpha=0.7)

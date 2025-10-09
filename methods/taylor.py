@@ -169,4 +169,4 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
     _, _ = run_er_experiments(model, task_train_loaders, task_test_loaders, buffer_size=replay_size,
                                     num_epochs=num_epochs, lr=lr, device=device)
 
-    return model, df
+    return global_model, df

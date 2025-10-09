@@ -5,7 +5,7 @@ import seaborn as sns
 from matplotlib.lines import Line2D
 
 # ---------- Configuration ----------
-DER_CSV = "../results/der_permutation_results.csv"
+er_CSV = "../results/er_permutation_results.csv"
 TAYLOR_CSV = "../results/taylor_permutation_results.csv"
 OUT_DIR = "../figures"
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -17,7 +17,7 @@ FIGSIZE_VIOLIN = (10, 6)
 FIGSIZE_BOX = (10, 6)
 
 # Colors
-VIOLIN_PALETTE = ["#2B547E", "#D87C5D"]    # DER (blue), TAYLOR (orange)
+VIOLIN_PALETTE = ["#2B547E", "#D87C5D"]    # er (blue), TAYLOR (orange)
 
 # Boxplot styling requested
 # Interpreted "134686" as hex color "#134686"
@@ -47,13 +47,13 @@ def parse_accuracy(x):
     return float(x)
 
 # ---------- Load data ----------
-der_df = pd.read_csv(DER_CSV)
+er_df = pd.read_csv(er_CSV)
 taylor_df = pd.read_csv(TAYLOR_CSV)
 
-der_df["Method"] = "DER"
+er_df["Method"] = "er"
 taylor_df["Method"] = "TAYLOR"
 
-df_comb = pd.concat([der_df, taylor_df], ignore_index=True)
+df_comb = pd.concat([er_df, taylor_df], ignore_index=True)
 
 # Melt to long format for violin
 df_long = df_comb.melt(
@@ -124,7 +124,7 @@ ax.add_artist(method_leg)
 
 plt.tight_layout(pad=0.6)
 caption = ("Figure. Distribution of accuracies per absolute task. Each violin shows performance "
-           "across task sequences for DER and TAYLOR. Quartile lines inside violins are solid black.")
+           "across task sequences for er and TAYLOR. Quartile lines inside violins are solid black.")
 # plt.figtext(0.5, -0.03, caption, wrap=True, ha="center", fontsize=FONT_SIZE)
 
 out_violin = os.path.join(OUT_DIR, "violin_combined_tasks.svg")
@@ -219,5 +219,5 @@ def make_boxplot_for_file(df, method_name, out_name):
     plt.close(fig_b)
     print(f"Saved boxplot to: {out_path}")
 
-make_boxplot_for_file(der_df, "DER", "boxplot_DER_tasks_custom.svg")
+make_boxplot_for_file(er_df, "er", "boxplot_er_tasks_custom.svg")
 make_boxplot_for_file(taylor_df, "TAYLOR", "boxplot_TAYLOR_tasks_custom.svg")
