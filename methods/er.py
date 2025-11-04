@@ -6,6 +6,8 @@ from utils import evaluate, clone_model
 from itertools import permutations
 import random
 import pandas as pd
+from copy import deepcopy
+from collections import Counter
 
 class ReplayBuffer:
     """
@@ -61,27 +63,9 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
-def train_er_model(
-        base_model,
-        task_perm,
-        train_loaders,
-        num_epochs,
-        lr,
-        device,
-        alpha=0.5,
-        beta=0.5,
-        buffer_size=500
-):
-    """
-    Train model sequentially across tasks using Experience Replay (ER).
+def train_er_model(base_model, task_perm, train_loaders, num_epochs,
+                          lr, device, buffer_size):
 
-    - base_model: model to clone
-    - task_perm: sequence of indices into train_loaders (e.g., (0,1) or (1,0))
-    - train_loaders: list of DataLoader objects
-    - alpha: weight for distillation (MSE on logits) stored in the buffer
-    - beta: weight for replay CE loss
-    - buffer_size: capacity of replay buffer
-    """
     model = clone_model(base_model).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
@@ -90,48 +74,43 @@ def train_er_model(
     model.train()
 
     for epoch in range(num_epochs):
-        # iterate tasks in the provided order
         for task_id in task_perm:
-            # ensure task_id indexes into given train_loaders
             loader = train_loaders[task_id]
-            for inputs, labels in loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                optimizer.zero_grad()
+            for batch_idx, (inputs, labels) in enumerate(loader):
+                inputs = inputs.to(device)
+                labels = labels.to(device).long()
 
-                # Forward on current batch
+                optimizer.zero_grad()
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
 
-                # Replay from buffer: obtain up to len(labels) samples (or fewer)
-                replay = buffer.sample(batch_size=len(labels))
+                # Replay from buffer (basic CE on replay)
+                replay = buffer.sample(batch_size=inputs.size(0))
                 if replay is not None:
-                    x_buf, y_buf, z_buf = replay
-                    out_buf = model(x_buf)
+                    # support both (x_buf, y_buf) and (x_buf, y_buf, z_buf) returns
+                    if len(replay) == 3:
+                        x_buf, y_buf, _ = replay
+                    else:
+                        x_buf, y_buf = replay
 
-                    # Cross-entropy on buffer labels (classic ER)
+                    # move replay items to device and correct dtype
+                    x_buf = x_buf.to(device)
+                    y_buf = y_buf.to(device).long()
+
+                    out_buf = model(x_buf)
                     ce_loss = criterion(out_buf, y_buf)
+                    beta = 0.5
                     loss = loss + beta * ce_loss
 
-                    # Optional distillation (logit-matching) using stored logits z_buf
-                    # Controlled by alpha. If alpha == 0, this term is disabled.
-                    if alpha is not None and alpha > 0.0:
-                        # ensure shapes match: z_buf and out_buf
-                        try:
-                            distill_loss = torch.nn.functional.mse_loss(out_buf, z_buf)
-                            loss = loss + alpha * distill_loss
-                        except Exception:
-                            # If shapes mismatch or other errors, skip distillation
-                            pass
-
-                # Backprop and step
+                # Backpropagate
                 loss.backward()
                 optimizer.step()
 
-                # Add current batch examples to buffer (store CPU copies)
+                # Add current batch to buffer (store CPU copies; keep logits for compatibility)
                 with torch.no_grad():
-                    # store logits on CPU as well for distillation
                     logits_cpu = outputs.detach().cpu()
                     for x_item, y_item, z_item in zip(inputs.cpu(), labels.cpu(), logits_cpu):
+                        # keep same add_sample signature so existing ReplayBuffer works
                         buffer.add_sample(x_item, y_item, z_item)
 
     return model

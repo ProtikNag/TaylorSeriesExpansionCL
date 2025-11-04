@@ -51,9 +51,9 @@ def main(args):
         # data = ContinualCIFAR100(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=3)
     elif args.dataset == "SplitMNIST":
         total_classes = 10
-        # data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size)
+        data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size)
         # Debug mode for quick testing
-        data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=2)
+        # data = ContinualSplitMNIST(num_tasks=args.num_tasks, batch_size=args.batch_size, debug=True, samples_per_class=200)
     else:
         raise NotImplementedError(f"Dataset {args.dataset} not supported.")
 
@@ -67,9 +67,11 @@ def main(args):
 
     if "taylor" in args.methods:
         model_taylor = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
-        model_taylor, acc_taylor = train_taylor(model_taylor, train_loaders, test_loaders,
-                                                    group_size=args.group_size, num_epochs=args.epochs,
-                                                    lr=args.lr, lambda_reg=args.lambda_reg, device=device)
+        train_taylor(
+            model_taylor, train_loaders, test_loaders,
+            group_size=args.group_size, num_epochs=args.epochs,
+            lr=args.lr, device=device
+        )
 
 
 if __name__ == "__main__":
@@ -80,9 +82,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs per task/group")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
-    parser.add_argument("--ewc_lambda", type=float, default=500.0, help="EWC regularization strength")
-    parser.add_argument("--lambda_reg", type=float, default=100.0, help="Taylor regularization strength")
-    parser.add_argument("--alpha", type=float, default=0.5, help="Alpha for linear interpolation in linear update")
     parser.add_argument("--methods", nargs='+', default=["naive", "ewc", "taylor"],
                         help="Methods to run (choose any subset of: naive, ewc, taylor)")
 
