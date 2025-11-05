@@ -9,6 +9,7 @@ import pandas as pd
 from copy import deepcopy
 from collections import Counter
 
+
 class ReplayBuffer:
     """
     Replay buffer that stores (x, y, z) on CPU to conserve GPU memory.
@@ -16,11 +17,12 @@ class ReplayBuffer:
     Sampling returns up to `batch_size` items (so it works even when the buffer
     is smaller than the requested size).
     """
+
     def __init__(self, capacity=500, device="cuda"):
         self.capacity = int(capacity)
         self.device = device
-        self.buffer = []            # stored as tuples of CPU tensors (x,y,z)
-        self.seen = 0               # total items ever seen (for reservoir sampling)
+        self.buffer = []  # stored as tuples of CPU tensors (x,y,z)
+        self.seen = 0  # total items ever seen (for reservoir sampling)
 
     def add_sample(self, x, y, z):
         """
@@ -64,8 +66,7 @@ class ReplayBuffer:
 
 
 def train_er_model(base_model, task_perm, train_loaders, num_epochs,
-                          lr, device, buffer_size):
-
+                   lr, device, buffer_size):
     model = clone_model(base_model).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
@@ -117,16 +118,12 @@ def train_er_model(base_model, task_perm, train_loaders, num_epochs,
 
 
 def run_er_experiments(model, task_train_loaders, task_test_loaders,
-                        buffer_size=500, num_epochs=30, lr=0.01, device="cuda",
-                        alpha=0.5, beta=0.5):
+                       buffer_size=500, num_epochs=30, lr=0.01, device="cuda"):
     """
     Run ER experiments across all permutations of tasks.
     Returns the trained model (on the last permutation) and the results DataFrame.
     """
     num_tasks = len(task_train_loaders)
-    if num_tasks == 0:
-        raise ValueError("No task loaders supplied")
-
     task_indices = list(range(num_tasks))
     results = []
 
@@ -137,9 +134,10 @@ def run_er_experiments(model, task_train_loaders, task_test_loaders,
         print(f"\n--- ER Sequence {seq_id}: {perm} ---")
 
         # Train ER model on this permutation (train_er_model clones base model)
-        local_model = train_er_model(model, perm, task_train_loaders,
-                                     num_epochs, lr, device,
-                                     alpha=alpha, beta=beta, buffer_size=buffer_size)
+        local_model = train_er_model(
+            model, perm, task_train_loaders,
+            num_epochs, lr, device, buffer_size
+        )
 
         # Evaluate after all tasks
         accs = [evaluate(local_model, task_test_loaders[tid], device=device)
@@ -157,6 +155,3 @@ def run_er_experiments(model, task_train_loaders, task_test_loaders,
         print("Saved ER results to ./results/er_permutation_results.csv")
     except Exception as e:
         print("Could not save ER results CSV:", e)
-
-    # Return last-trained model and results dataframe
-    return local_model, df

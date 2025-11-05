@@ -2,40 +2,13 @@
 
 import argparse
 import torch
-import matplotlib.pyplot as plt
 from data import ContinualCIFAR100, ContinualSplitMNIST
 from models import get_model
 from methods.taylor import train_taylor
-from utils import compute_avg_accuracy, compute_avg_forgetting, save_model_and_metrics, load_model_and_metrics, set_seed
-import numpy as np
-
+from utils import set_seed
+from methods.er import run_er_experiments
 
 set_seed(42)
-
-
-def plot_results(method_names, acc_matrices, tag=""):
-    plt.figure(figsize=(10, 5))
-    for method, acc_matrix in zip(method_names, acc_matrices):
-        x = list(range(1, len(acc_matrix) + 1))
-        y = [np.mean(accs) for accs in acc_matrix]
-        plt.plot(x, y, label=method)
-    plt.xlabel("Task ID")
-    plt.ylabel("Average Accuracy (%)")
-    plt.title("Task-wise Average Accuracy")
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(f"accuracy_plot_{tag}.png")
-    plt.close()
-
-
-def print_metrics(name, acc_matrix):
-    avg_acc = compute_avg_accuracy(acc_matrix)
-    avg_forgetting = compute_avg_forgetting(acc_matrix)
-    print(f"=== {name} ===")
-    print(f"Accuracies   : {acc_matrix}")
-    print(f"Avg Accuracy   : {avg_acc:.2f}%")
-    print(f"Avg Forgetting : {avg_forgetting:.2f}%\n")
-    return avg_acc, avg_forgetting
 
 
 def main(args):
@@ -61,17 +34,19 @@ def main(args):
     train_loaders, test_loaders = data.get_task_loaders()
     tag = f"T{args.num_tasks}_G{args.group_size}"
 
-    all_accs = []
-    all_names = []
+    model_taylor = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
+    # train_taylor(
+    #     model_taylor, train_loaders, test_loaders,
+    #     group_size=args.group_size, num_epochs=args.epochs,
+    #     lr=args.lr, device=device
+    # )
 
-
-    if "taylor" in args.methods:
-        model_taylor = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
-        train_taylor(
-            model_taylor, train_loaders, test_loaders,
-            group_size=args.group_size, num_epochs=args.epochs,
-            lr=args.lr, device=device
-        )
+    model_er = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
+    run_er_experiments(
+        model_er, train_loaders, test_loaders,
+        buffer_size=1500, num_epochs=args.epochs,
+        lr=args.lr, device=device,
+    )
 
 
 if __name__ == "__main__":
@@ -82,8 +57,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs per task/group")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
-    parser.add_argument("--methods", nargs='+', default=["naive", "ewc", "taylor"],
-                        help="Methods to run (choose any subset of: naive, ewc, taylor)")
 
     args = parser.parse_args()
     main(args)

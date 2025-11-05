@@ -6,7 +6,7 @@ from utils import evaluate, estimate_diag_hessian_exact, clone_model
 import random
 import itertools
 import pandas as pd
-from methods.er import train_er_model, run_er_experiments
+from methods.er import train_er_model
 
 
 def select_best_permutation(base_model, group_train_loaders, group_val_loaders,
@@ -154,7 +154,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         ordered_test = [task_test_loaders[i] for i in perm]
 
         # Standard Taylor training procedure
-        replay_size = 1500
+        buffer_size = 1500
         replay_buffer = []            # stores dataset objects (ConcatDataset will combine them)
         acc_per_task = []
 
@@ -170,7 +170,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
             # Local search over permutations inside the group (returns model on device)
             local_base_model = clone_model(global_model).to(device)
             local_trained = select_best_permutation(local_base_model, group_train_loaders, group_val_loaders,
-                                                    num_epochs, lr, device, buffer_size=replay_size)
+                                                    num_epochs, lr, device, buffer_size=buffer_size)
             local_trained.to(device)
 
             # Build combined dataset for global update: group's datasets + replay buffer datasets
@@ -194,8 +194,8 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
             # Update replay buffer with datasets from this group
             replay_buffer.extend([g.dataset for g in group_train_loaders])
             random.shuffle(replay_buffer)
-            if len(replay_buffer) > replay_size:
-                replay_buffer = replay_buffer[-replay_size:]
+            if len(replay_buffer) > buffer_size:
+                replay_buffer = replay_buffer[-buffer_size:]
 
             # Evaluate global model on *all tasks in the permuted order* so
             # we always store a length-num_tasks accuracies vector.
@@ -224,11 +224,4 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         print("Saved results to ./results/taylor_permutation_results.csv")
     except Exception as e:
         print("Could not save results CSV:", e)
-
-    # Optionally run ER baseline experiments and save their csv as well
-    try:
-        _, _ = run_er_experiments(model, task_train_loaders, task_test_loaders,
-                                  buffer_size=replay_size, num_epochs=num_epochs, lr=lr, device=device)
-    except Exception as e:
-        print("run_er_experiments failed or returned error:", e)
 
