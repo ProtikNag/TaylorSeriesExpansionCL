@@ -2,11 +2,13 @@
 import torch
 import torch.nn as nn
 from itertools import permutations
-from utils import evaluate, estimate_diag_hessian_exact, clone_model
+from torch.utils.data import ConcatDataset, DataLoader
+from utils import evaluate, estimate_diag_hessian_exact
 import random
 import itertools
 import pandas as pd
 from methods.er import train_er_model
+import copy
 
 
 def select_best_permutation(base_model, group_train_loaders, group_val_loaders,
@@ -28,11 +30,11 @@ def select_best_permutation(base_model, group_train_loaders, group_val_loaders,
 
         if avg_acc > best_acc:
             best_acc = avg_acc
-            best_model = clone_model(local_model).to(device)
+            best_model = copy.deepcopy(local_model).to(device)
 
     # In case all permutations failed for some reason, return a clone of base_model
     if best_model is None:
-        best_model = clone_model(base_model).to(device)
+        best_model = copy.deepcopy(base_model).to(device)
 
     return best_model
 
@@ -117,8 +119,7 @@ def _canonicalize_perm_by_group(perm, group_size):
 
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
-                 num_epochs=30, lr=0.01, device='cuda',
-                 eta=0.5, max_norm=1.0, verbose=True):
+                 num_epochs=30, lr=0.01, device='cuda', verbose=True):
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []
@@ -145,7 +146,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         processed_count += 1
 
         # Fresh copy of the global model for this permutation
-        global_model = clone_model(model).to(device)
+        global_model = copy.deepcopy(model).to(device)
 
         print(f"\n--- Sequence {seq_id}: {perm} ---")
 
@@ -154,7 +155,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         ordered_test = [task_test_loaders[i] for i in perm]
 
         # Standard Taylor training procedure
-        buffer_size = 1500
+        buffer_size = 200
         replay_buffer = []            # stores dataset objects (ConcatDataset will combine them)
         acc_per_task = []
 
@@ -167,9 +168,24 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
             group_train_loaders = [ordered_train[i] for i in task_group]
             group_val_loaders = [ordered_test[i] for i in task_group]
 
+            group_train_loaders_with_replay = []
+            for g in group_train_loaders:
+                base_dataset = g.dataset  # original dataset for this task
+                # make list: current task dataset + all previous replay datasets
+                datasets_for_loader = [base_dataset] + list(replay_buffer)
+                concat_ds = ConcatDataset(datasets_for_loader)
+
+                # try to preserve original loader batch size / num_workers if available
+                batch_size = getattr(g, "batch_size", 64)
+                num_workers = getattr(g, "num_workers", 0)
+                shuffle = True  # keep shuffle for training
+
+                loader_with_replay = DataLoader(concat_ds, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+                group_train_loaders_with_replay.append(loader_with_replay)
+
             # Local search over permutations inside the group (returns model on device)
-            local_base_model = clone_model(global_model).to(device)
-            local_trained = select_best_permutation(local_base_model, group_train_loaders, group_val_loaders,
+            local_base_model = copy.deepcopy(global_model).to(device)
+            local_trained = select_best_permutation(local_base_model, group_train_loaders_with_replay, group_val_loaders,
                                                     num_epochs, lr, device, buffer_size=buffer_size)
             local_trained.to(device)
 
@@ -185,6 +201,8 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
             if t == 0:
                 global_model.load_state_dict(local_trained.state_dict())
             else:
+                eta = 1
+                max_norm = 1.0
                 global_model = taylor_global_update(
                     global_model, local_trained,
                     combined_loader, device=device,

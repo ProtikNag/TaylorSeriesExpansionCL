@@ -2,12 +2,11 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from utils import evaluate, clone_model
+from utils import evaluate
 from itertools import permutations
 import random
 import pandas as pd
-from copy import deepcopy
-from collections import Counter
+import copy
 
 
 class ReplayBuffer:
@@ -67,7 +66,7 @@ class ReplayBuffer:
 
 def train_er_model(base_model, task_perm, train_loaders, num_epochs,
                    lr, device, buffer_size):
-    model = clone_model(base_model).to(device)
+    model = copy.deepcopy(base_model).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
     buffer = ReplayBuffer(capacity=buffer_size, device=device)
@@ -123,6 +122,7 @@ def run_er_experiments(model, task_train_loaders, task_test_loaders,
     Run ER experiments across all permutations of tasks.
     Returns the trained model (on the last permutation) and the results DataFrame.
     """
+
     num_tasks = len(task_train_loaders)
     task_indices = list(range(num_tasks))
     results = []

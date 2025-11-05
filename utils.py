@@ -132,9 +132,3 @@ def estimate_diag_hessian(model, data_loader, criterion, device='cuda'):
         hessian_diag[name] /= len(data_loader)
 
     return hessian_diag
-
-
-def clone_model(model):
-    """Deep copy model with parameters (detached)"""
-    import copy
-    return copy.deepcopy(model)

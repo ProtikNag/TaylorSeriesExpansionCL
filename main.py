@@ -32,19 +32,18 @@ def main(args):
 
     num_classes_per_task = total_classes // args.num_tasks
     train_loaders, test_loaders = data.get_task_loaders()
-    tag = f"T{args.num_tasks}_G{args.group_size}"
 
     model_taylor = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
-    # train_taylor(
-    #     model_taylor, train_loaders, test_loaders,
-    #     group_size=args.group_size, num_epochs=args.epochs,
-    #     lr=args.lr, device=device
-    # )
+    train_taylor(
+        model_taylor, train_loaders, test_loaders,
+        group_size=args.group_size, num_epochs=args.epochs,
+        lr=args.lr, device=device
+    )
 
     model_er = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
     run_er_experiments(
         model_er, train_loaders, test_loaders,
-        buffer_size=1500, num_epochs=args.epochs,
+        buffer_size=200, num_epochs=args.epochs,
         lr=args.lr, device=device,
     )
 
