@@ -43,7 +43,7 @@ def main(args):
     model_er = get_model(num_classes=num_classes_per_task, dataset=args.dataset)
     run_er_experiments(
         model_er, train_loaders, test_loaders,
-        buffer_size=500, num_epochs=args.epochs,
+        buffer_size=50, num_epochs=args.epochs,
         lr=args.lr, device=device,
     )
 
