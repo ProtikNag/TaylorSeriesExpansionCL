@@ -155,7 +155,7 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         ordered_test = [task_test_loaders[i] for i in perm]
 
         # Standard Taylor training procedure
-        buffer_size = 200
+        buffer_size = 500
         replay_buffer = []            # stores dataset objects (ConcatDataset will combine them)
         acc_per_task = []
 
