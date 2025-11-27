@@ -65,7 +65,7 @@ df_long = df_comb.melt(
 df_long["Accuracy"] = df_long["Accuracy"].apply(parse_accuracy).astype(float)
 df_long["TaskLabel"] = df_long["Task"].map(task_label_map)
 
-# ---------- Combined Violin Plot ----------
+# ---------- Combined Violin Plot (no extrapolation) ----------
 sns.set_theme(style="ticks")  # remove grid background
 plt.rc("font", family=FONT_FAMILY, size=FONT_SIZE+4)
 
@@ -80,23 +80,20 @@ sns.violinplot(
     inner="quartile",
     palette=VIOLIN_PALETTE,
     density_norm="width",
+    cut=0,              # <--- prevent KDE from extrapolating beyond data min/max
+    bw=0.1,           # optional: uncomment to tweak bandwidth (smaller -> less smooth)
     ax=ax
 )
 
-# ax.set_title("Comparison of distributions per task", fontsize=FONT_SIZE + 2)
-# ax.set_xlabel("Task ", fontsize=FONT_SIZE)
-ax.set_ylabel("Accuracy (%)", fontsize=FONT_SIZE+4)
-ax.grid(False)  # ensure no gridlines
+# ax.set_ylabel("Accuracy (%)", fontsize=FONT_SIZE+4)
+ax.grid(False)
 
-# Ensure ticks are explicitly set before setting labels to avoid UserWarning
+# Ensure xticks/labels set explicitly
 tick_positions = list(range(len(TASK_LABELS)))
 ax.set_xticks(tick_positions)
 ax.set_xticklabels(TASK_LABELS)
 
-# --- Make quartile lines black and solid ---
-# The quartile lines drawn by seaborn for violinplot are stored in ax.lines.
-# We'll set relevant lines to black solid. This may affect a few line elements,
-# but the quartiles will be clearly visible as solid black.
+# Make quartile lines black and solid (same as you had)
 for ln in ax.lines:
     ln.set_color("black")
     ln.set_linestyle("-")
@@ -107,26 +104,19 @@ method_leg = ax.legend(title="Method", loc="lower right", frameon=True)
 method_leg.get_frame().set_alpha(0.0)
 
 # Quartile legend centered below figure.
-# Use a solid black line to represent quartiles (matching the actual quartile lines).
 quartile_handle = Line2D([0], [0], color="black", linestyle="-", linewidth=1.2)
 quartile_leg = ax.legend(
     handles=[quartile_handle],
-    labels=["Quartiles (25th, median, 75th) — solid black"],
-    loc="lower center",
+    # labels=["Quartiles (25th, median, 75th) — solid black"],
+    # loc="lower center",
     bbox_to_anchor=(0.5, -0.20),
     frameon=True,
     fontsize=FONT_SIZE - 1
 )
 quartile_leg.get_frame().set_alpha(0.0)
-
-# Re-add method legend because second legend call replaced it
 ax.add_artist(method_leg)
 
 plt.tight_layout(pad=0.6)
-caption = ("Figure. Distribution of accuracies per absolute task. Each violin shows performance "
-           "across task sequences for er and TAYLOR. Quartile lines inside violins are solid black.")
-# plt.figtext(0.5, -0.03, caption, wrap=True, ha="center", fontsize=FONT_SIZE)
-
 out_violin = os.path.join(OUT_DIR, "violin_combined_tasks.svg")
 fig.savefig(out_violin, bbox_inches="tight", format="svg", dpi=FIG_DPI)
 plt.close(fig)
