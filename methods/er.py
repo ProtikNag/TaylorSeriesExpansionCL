@@ -117,7 +117,7 @@ def train_er_model(base_model, task_perm, train_loaders, num_epochs,
 
 
 def run_er_experiments(model, task_train_loaders, task_test_loaders,
-                       buffer_size=500, num_epochs=30, lr=0.01, device="cuda"):
+                       buffer_size=500, num_epochs=30, lr=0.01, perms=None, device="cuda", dataset=None):
     """
     Run ER experiments across all permutations of tasks.
     Returns the trained model (on the last permutation) and the results DataFrame.
@@ -127,7 +127,6 @@ def run_er_experiments(model, task_train_loaders, task_test_loaders,
     task_indices = list(range(num_tasks))
     results = []
 
-    perms = list(permutations(task_indices))
     print(f"=== Running ER experiment across {len(perms)} permutations ===")
 
     for seq_id, perm in enumerate(perms, start=1):
@@ -151,7 +150,7 @@ def run_er_experiments(model, task_train_loaders, task_test_loaders,
         **{f"Task{t + 1}": [r["accuracies"][t] for r in results] for t in range(num_tasks)}
     })
     try:
-        df.to_csv("./results/er_permutation_results.csv", index=False)
-        print("Saved ER results to ./results/er_permutation_results.csv")
+        df.to_csv(f"./results/er_permutation_results_{dataset}.csv", index=False)
+        print(f"Saved ER results to ./results/er_permutation_results_{dataset}.csv")
     except Exception as e:
         print("Could not save ER results CSV:", e)

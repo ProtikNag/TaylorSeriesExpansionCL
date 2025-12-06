@@ -119,12 +119,10 @@ def _canonicalize_perm_by_group(perm, group_size):
 
 
 def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
-                 num_epochs=30, lr=0.01, device='cuda', verbose=True):
+                 num_epochs=30, lr=0.01, buffer_size=100, perms=None, device='cuda', verbose=True, dataset=None):
     num_tasks = len(task_train_loaders)
-    task_indices = list(range(num_tasks))
     results = []
 
-    perms = list(itertools.permutations(task_indices))
     print(f"=== Running Taylor-series experiment across {len(perms)} permutations ===")
 
     seen = set()
@@ -155,7 +153,6 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
         ordered_test = [task_test_loaders[i] for i in perm]
 
         # Standard Taylor training procedure
-        buffer_size = 50
         replay_buffer = []            # stores dataset objects (ConcatDataset will combine them)
         acc_per_task = []
 
@@ -238,8 +235,8 @@ def train_taylor(model, task_train_loaders, task_test_loaders, group_size=2,
 
     # Ensure results dir exists (best-effort)
     try:
-        df.to_csv("./results/taylor_permutation_results.csv", index=False)
-        print("Saved results to ./results/taylor_permutation_results.csv")
+        df.to_csv(f"./results/taylor_permutation_results_{dataset}.csv", index=False)
+        print(f"Saved results to ./results/taylor_permutation_results_{dataset}.csv")
     except Exception as e:
         print("Could not save results CSV:", e)
 
