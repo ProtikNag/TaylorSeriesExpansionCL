@@ -28,8 +28,8 @@ def run_for_dataset(name, data_constructor, total_classes, num_tasks, batch_size
     print("=" * 80 + "\n")
 
     # Instantiate dataset
-    data = data_constructor(num_tasks=num_tasks, batch_size=batch_size)
-    # data = data_constructor(num_tasks=num_tasks, batch_size=batch_size, debug=True, samples_per_class=1)
+    # data = data_constructor(num_tasks=num_tasks, batch_size=batch_size)
+    data = data_constructor(num_tasks=num_tasks, batch_size=batch_size, debug=True, samples_per_class=100)
 
     num_classes_per_task = total_classes // num_tasks
     train_loaders, test_loaders = data.get_task_loaders()
