@@ -28,8 +28,8 @@ def run_for_dataset(name, data_constructor, total_classes, num_tasks, batch_size
     print("=" * 80 + "\n")
 
     # Instantiate dataset
-    # data = data_constructor(num_tasks=num_tasks, batch_size=batch_size)
-    data = data_constructor(num_tasks=num_tasks, batch_size=batch_size, debug=True, samples_per_class=1)
+    data = data_constructor(num_tasks=num_tasks, batch_size=batch_size)
+    # data = data_constructor(num_tasks=num_tasks, batch_size=batch_size, debug=True, samples_per_class=1)
 
     num_classes_per_task = total_classes // num_tasks
     train_loaders, test_loaders = data.get_task_loaders()
@@ -42,7 +42,7 @@ def run_for_dataset(name, data_constructor, total_classes, num_tasks, batch_size
     task_indices = list(range(num_tasks))
     all_perms = list(itertools.permutations(task_indices))
 
-    n = 1
+    n = 10
     perms = random.sample(all_perms, n)
 
     train_taylor(
@@ -83,7 +83,7 @@ def main():
     dataset_runs = [
         ("CIFAR100", ContinualCIFAR100, 100, 10, 128, 0.1, 500),
         ("SplitMNIST", ContinualSplitMNIST, 10, 5, 64, 0.01, 50),
-        ("Cora", ContinualCora, 7, 3, 64, 0.01, 50),
+        # ("Cora", ContinualCora, 7, 3, 64, 0.01, 50),
         ("20Newsgroups", Continual20Newsgroups, 20, 5, 64, 1e-3, 100),
     ]
 

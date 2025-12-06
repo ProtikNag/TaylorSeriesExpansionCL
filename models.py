@@ -55,21 +55,19 @@ class SmallCNN(nn.Module):
 
 class GCNNet(nn.Module):
     """
-    Simple 2-layer GCN for node classification (torch_geometric required).
+    Simple 2-layer GCN for node classification with an MLP fallback.
 
-    - If in_channels is provided at construction, convs are created immediately.
-    - If in_channels is None, convs are created lazily on the first forward using x.size(1).
-    - forward expects (x, edge_index) and returns logits of shape [N, num_classes].
+    - If edge_index is provided, runs two GCN layers and returns [N, num_classes].
+    - If edge_index is None, treats x as [B, F] and runs a small MLP returning [B, num_classes].
+    - Convs are lazily initialized if in_channels=None.
     """
     def __init__(self, num_classes=2, in_channels=None, hidden=128, dropout=0.5):
         super(GCNNet, self).__init__()
-        if not TG_AVAILABLE:
-            raise ImportError("torch_geometric is required for GCNNet but not available.")
         self.num_classes = num_classes
         self.hidden = hidden
         self.dropout = dropout
 
-        # conv placeholders (may be created immediately or lazily)
+        # GCN conv placeholders (create if in_channels is provided)
         if in_channels is not None:
             self.conv1 = GCNConv(in_channels, hidden)
             self.conv2 = GCNConv(hidden, hidden)
@@ -80,33 +78,57 @@ class GCNNet(nn.Module):
         # final classifier maps hidden -> num_classes
         self.classifier = nn.Linear(hidden, num_classes)
 
+        # MLP fallback layers (fc1 created lazily when needed)
+        self.mlp_fc1 = None  # will be created on first forward when edge_index is None
+
     def _init_convs(self, in_channels):
         """Create convs lazily when input feature dim is known."""
         if self.conv1 is None or self.conv2 is None:
             self.conv1 = GCNConv(in_channels, self.hidden)
             self.conv2 = GCNConv(self.hidden, self.hidden)
 
-    def forward(self, x, edge_index):
+    def _ensure_mlp_fc1(self, in_features, device=None):
+        """Create mlp_fc1 if missing or mismatched."""
+        if (self.mlp_fc1 is None) or (self.mlp_fc1.in_features != in_features):
+            self.mlp_fc1 = nn.Linear(in_features, self.hidden)
+            if device is not None:
+                self.mlp_fc1.to(device)
+
+    def forward(self, x, edge_index=None):
         """
-        x: Tensor [N, F]
-        edge_index: LongTensor [2, E]
-        returns logits: [N, num_classes]
+        x: Tensor [N, F] or [B, F]
+        edge_index: LongTensor [2, E] or None
+        returns logits: [N, num_classes] (graph mode) or [B, num_classes] (MLP fallback)
         """
-        if self.conv1 is None:
-            # assume x is [N, F]
-            self._init_convs(x.size(1))
+        # Graph mode if edge_index provided
+        if edge_index is not None:
+            if self.conv1 is None:
+                self._init_convs(x.size(1))
+            x = self.conv1(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
 
-        # two GCN layers with ReLU + dropout
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, p=self.dropout, training=self.training)
+            x = self.conv2(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
 
-        x = self.conv2(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, p=self.dropout, training=self.training)
+            logits = self.classifier(x)  # [N, num_classes]
+            return logits
 
-        logits = self.classifier(x)  # [N, num_classes]
-        return logits
+        # MLP fallback mode (no adjacency supplied)
+        if isinstance(x, torch.Tensor):
+            device = x.device
+            in_features = x.size(1)
+            self._ensure_mlp_fc1(in_features, device=device)
+
+            h = self.mlp_fc1(x)
+            h = F.relu(h)
+            h = F.dropout(h, p=self.dropout, training=self.training)
+
+            logits = self.classifier(h)  # [B, num_classes]
+            return logits
+
+        raise ValueError("GCNNet.forward received unsupported input types.")
 
 
 class TextMLP(nn.Module):
