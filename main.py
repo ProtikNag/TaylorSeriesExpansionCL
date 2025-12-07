@@ -18,7 +18,7 @@ import random
 set_seed(42)
 
 
-def run_for_dataset(name, data_constructor, total_classes, num_tasks, batch_size, lr, epochs, group_size, buffer_size, device):
+def run_for_dataset(name, data_constructor, total_classes, num_tasks, batch_size, lr, epochs, group_size, buffer_size, num_classes_per_task, device):
     """
     Runs Taylor + ER for a single dataset.
     """
@@ -29,9 +29,8 @@ def run_for_dataset(name, data_constructor, total_classes, num_tasks, batch_size
 
     # Instantiate dataset
     # data = data_constructor(num_tasks=num_tasks, batch_size=batch_size)
-    data = data_constructor(num_tasks=num_tasks, batch_size=batch_size, debug=True, samples_per_class=100)
+    data = data_constructor(num_tasks=num_tasks, batch_size=batch_size, debug=True, samples_per_class=60)
 
-    num_classes_per_task = total_classes // num_tasks
     train_loaders, test_loaders = data.get_task_loaders()
 
     # ----- Taylor -----
@@ -42,7 +41,7 @@ def run_for_dataset(name, data_constructor, total_classes, num_tasks, batch_size
     task_indices = list(range(num_tasks))
     all_perms = list(itertools.permutations(task_indices))
 
-    n = 10
+    n = 4
     perms = random.sample(all_perms, n)
 
     train_taylor(
@@ -81,13 +80,13 @@ def main():
 
     # (dataset_name, constructor, total_classes, num_tasks, batch_size, lr)
     dataset_runs = [
-        ("CIFAR100", ContinualCIFAR100, 100, 10, 128, 0.1, 500),
-        ("SplitMNIST", ContinualSplitMNIST, 10, 5, 64, 0.01, 50),
-        # ("Cora", ContinualCora, 7, 3, 64, 0.01, 50),
-        ("20Newsgroups", Continual20Newsgroups, 20, 5, 64, 1e-3, 100),
+        ("CIFAR100", ContinualCIFAR100, 100, 10, 32, 0.1, 500, 10),
+        ("20Newsgroups", Continual20Newsgroups, 20, 5, 32, 1e-3, 100, 4),
+        ("SplitMNIST", ContinualSplitMNIST, 10, 5, 32, 0.01, 50, 2),
+        ("Cora", ContinualCora, 7, 3, 32, 0.01, 50, 3),
     ]
 
-    for name, constructor, total_classes, num_tasks, batch_size, lr, buffer_size in dataset_runs:
+    for name, constructor, total_classes, num_tasks, batch_size, lr, buffer_size, num_classes_per_task in dataset_runs:
         try:
             run_for_dataset(
                 name=name,
@@ -99,6 +98,7 @@ def main():
                 epochs=5,
                 group_size=2,
                 buffer_size=buffer_size,
+                num_classes_per_task=num_classes_per_task,
                 device=device,
             )
         except Exception as e:
