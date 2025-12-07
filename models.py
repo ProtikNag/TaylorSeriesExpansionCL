@@ -12,7 +12,7 @@ class SimpleResNet(nn.Module):
         super(SimpleResNet, self).__init__()
 
         # Use ResNet18 backbone, adjusted for CIFAR resolution
-        self.backbone = models.resnet18(weights='DEFAULT')
+        self.backbone = models.resnet18(weights=None)
         self.backbone.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.backbone.maxpool = nn.Identity()
         self.backbone.fc = nn.Identity()
