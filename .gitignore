@@ -3,3 +3,114 @@
 *.venv*
 *checkpoints*
 *data/*
+
+
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+develop-eggs/
+pip-wheel-metadata/
+.wheels/
+share/python-wheels/
+*.manifest
+*.spec
+
+# Byte-compiled / optimized / DLL files
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# PyInstaller
+#  Usually these files are written by PyInstaller when you create
+#  executables for your application.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# pyenv
+.python-version
+
+# PDM
+.pdm.toml
+.pdm-python
+
+# Poetry
+poetry.lock
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# pytype
+.pytype/
+
+# Pyre
+.pyre/
+
+# Ruff / linters
+.ruff_cache/
+
+# -------------------------
+# IDEs & Editors
+# -------------------------
+
+# JetBrains / PyCharm
+.idea/
+*.iml
+out/
+
+# VSCode (if teammates use it)
+.vscode/
+
+# -------------------------
+# OS-generated files
+# -------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Logs & misc
+# -------------------------
+*.log
+logs/
+
+# HPC job output files (generalized)
+job*.out
+job*.err

@@ -5,8 +5,8 @@ import seaborn as sns
 from matplotlib.lines import Line2D
 
 # ---------- Configuration ----------
-er_CSV = "../results/er_permutation_results.csv"
-TAYLOR_CSV = "../results/taylor_permutation_results.csv"
+er_CSV = "../results/er_permutation_results_20Newsgroups.csv"
+TAYLOR_CSV = "../results/taylor_permutation_results_20Newsgroups.csv"
 OUT_DIR = "../figures"
 os.makedirs(OUT_DIR, exist_ok=True)
 
