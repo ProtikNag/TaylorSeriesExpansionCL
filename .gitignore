@@ -2,7 +2,11 @@
 *__pycache__*
 *.venv*
 *checkpoints*
-*data/*
+# Ignore ONLY the top-level data folder
+/data/
+
+# But DO NOT ignore the data folder inside htcl
+!htcl/data/
 
 
 # -------------------------

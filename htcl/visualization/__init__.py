@@ -1,0 +1,33 @@
+from .plots import (
+    save_figure,
+    plot_task_accuracy_comparison,
+    plot_hierarchy_comparison,
+    plot_hierarchy_line_comparison,
+    plot_task_order_robustness,
+    plot_forgetting_comparison,
+    plot_mean_accuracy_with_std,
+    plot_comprehensive_comparison,
+    plot_accuracy_heatmap,
+    plot_time_comparison,
+    plot_hierarchy_time_comparison,
+    create_all_visualizations,
+    COLORS,
+    HIERARCHY_COLORS,
+)
+
+__all__ = [
+    "save_figure",
+    "plot_task_accuracy_comparison",
+    "plot_hierarchy_comparison",
+    "plot_hierarchy_line_comparison",
+    "plot_task_order_robustness",
+    "plot_forgetting_comparison",
+    "plot_mean_accuracy_with_std",
+    "plot_comprehensive_comparison",
+    "plot_accuracy_heatmap",
+    "plot_time_comparison",
+    "plot_hierarchy_time_comparison",
+    "create_all_visualizations",
+    "COLORS",
+    "HIERARCHY_COLORS",
+]
