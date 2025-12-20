@@ -2,6 +2,8 @@
 Experiment runners for HTCL.
 
 Provides easy-to-use functions for running complete experiments.
+Results are organized by dataset and baseline method:
+    results/{dataset}/{baseline}/
 """
 
 import os
@@ -16,13 +18,44 @@ import torch
 from ..config import ExperimentConfig, get_mnist_config, get_cifar100_config
 from ..data import get_dataset
 from ..models import get_model
-from ..methods import run_er_experiments, train_htcl, run_hierarchy_comparison, generate_canonical_permutations
+from ..methods import (
+    run_er_experiments, 
+    run_ser_experiments,
+    train_htcl, 
+    run_hierarchy_comparison, 
+    generate_canonical_permutations,
+    get_baseline_runner,
+    BASELINE_REGISTRY,
+)
 from ..utils import set_seed, get_device, ResultsManager
 from ..visualization import create_all_visualizations
 
 
+def get_output_dir(base_dir: str, dataset: str, baseline: str) -> str:
+    """
+    Generate organized output directory path.
+    
+    Args:
+        base_dir: Base results directory (e.g., "./results")
+        dataset: Dataset name (e.g., "SplitMNIST")
+        baseline: Baseline method name (e.g., "er", "er")
+    
+    Returns:
+        Path like "./results/splitmnist/er/"
+    """
+    # Normalize names
+    dataset_lower = dataset.lower().replace("-", "").replace("_", "")
+    baseline_lower = baseline.lower()
+    
+    output_dir = os.path.join(base_dir, dataset_lower, baseline_lower)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    return output_dir
+
+
 def run_single_experiment(
     config: ExperimentConfig,
+    baseline: str = "er",
     save_results: bool = True,
 ) -> Dict[str, Any]:
     """
@@ -30,6 +63,7 @@ def run_single_experiment(
     
     Args:
         config: Experiment configuration
+        baseline: Baseline method to use ("er", "er", etc.)
         save_results: Whether to save results to disk
     
     Returns:
@@ -38,9 +72,13 @@ def run_single_experiment(
     set_seed(config.data.seed)
     device = get_device() if config.training.device == "cuda" else config.training.device
     
+    # Get organized output directory
+    output_dir = get_output_dir(config.output_dir, config.data.name, baseline)
+    
     print(f"\n{'='*70}")
     print(f"Experiment: {config.experiment_name}")
-    print(f"Dataset: {config.data.name}, Device: {device}")
+    print(f"Dataset: {config.data.name}, Baseline: {baseline.upper()}, Device: {device}")
+    print(f"Output: {output_dir}")
     print(f"{'='*70}\n")
     
     # Load dataset
@@ -76,12 +114,15 @@ def run_single_experiment(
     
     print(f"Using {len(perms)} canonical permutations (unique under group_size={config.htcl.group_size})")
     
-    # Run ER experiments
+    # Get the baseline runner
+    baseline_runner = get_baseline_runner(baseline)
+    
+    # Run baseline experiments
     print("\n" + "-"*50)
-    print("Running Experience Replay (ER) experiments...")
+    print(f"Running {baseline.upper()} baseline experiments...")
     print("-"*50)
     
-    er_results = run_er_experiments(
+    baseline_results = baseline_runner(
         model=model,
         train_loaders=train_loaders,
         test_loaders=test_loaders,
@@ -89,16 +130,15 @@ def run_single_experiment(
         buffer_size=config.htcl.buffer_size,
         num_epochs=config.training.num_epochs,
         lr=config.training.learning_rate,
-        beta=config.htcl.buffer_beta,
         device=device,
         dataset=config.data.name,
-        output_dir=config.output_dir,
+        output_dir=output_dir,
         verbose=config.verbose,
     )
     
     # Run HTCL experiments
     print("\n" + "-"*50)
-    print(f"Running HTCL (L={config.htcl.num_levels}) experiments...")
+    print(f"Running {baseline.upper()} + HTCL (L={config.htcl.num_levels}) experiments...")
     print("-"*50)
     
     htcl_results = train_htcl(
@@ -113,7 +153,7 @@ def run_single_experiment(
         perms=perms,
         device=device,
         dataset=config.data.name,
-        output_dir=config.output_dir,
+        output_dir=output_dir,
         catchup_enabled=config.htcl.catchup_enabled,
         catchup_epochs=config.htcl.catchup_epochs,
         catchup_lr_factor=config.htcl.catchup_lr_factor,
@@ -125,15 +165,16 @@ def run_single_experiment(
     # Compile results
     results = {
         "experiment_name": config.experiment_name,
+        "baseline": baseline,
         "config": config.to_dict(),
         "timestamp": datetime.now().isoformat(),
-        "er_results": er_results,
+        "baseline_results": baseline_results,
         "htcl_results": htcl_results,
     }
     
     # Save results
     if save_results:
-        results_manager = ResultsManager(config.output_dir)
+        results_manager = ResultsManager(output_dir)
         results_path = results_manager.save_results(results, config.experiment_name)
         print(f"\nResults saved to: {results_path}")
     
@@ -141,9 +182,9 @@ def run_single_experiment(
     print("\n" + "="*70)
     print("EXPERIMENT SUMMARY")
     print("="*70)
-    print(f"ER Mean Accuracy: {er_results['summary']['mean_accuracy']:.2f}% "
-          f"(±{er_results['summary']['std_accuracy']:.2f}%)")
-    print(f"HTCL Mean Accuracy: {htcl_results['summary']['mean_accuracy']:.2f}% "
+    print(f"{baseline.upper()} Mean Accuracy: {baseline_results['summary']['mean_accuracy']:.2f}% "
+          f"(±{baseline_results['summary']['std_accuracy']:.2f}%)")
+    print(f"{baseline.upper()}+HTCL Mean Accuracy: {htcl_results['summary']['mean_accuracy']:.2f}% "
           f"(±{htcl_results['summary']['std_accuracy']:.2f}%)")
     print("="*70)
     
@@ -152,6 +193,7 @@ def run_single_experiment(
 
 def run_hierarchy_experiment(
     config: ExperimentConfig,
+    baseline: str = "er",
     hierarchy_levels: List[int] = [2, 3, 4, 5],
     save_results: bool = True,
     create_visualizations: bool = True,
@@ -161,6 +203,7 @@ def run_hierarchy_experiment(
     
     Args:
         config: Base experiment configuration
+        baseline: Baseline method to use ("er", "er", etc.)
         hierarchy_levels: List of hierarchy levels to compare
         save_results: Whether to save results
         create_visualizations: Whether to create plots
@@ -171,9 +214,13 @@ def run_hierarchy_experiment(
     set_seed(config.data.seed)
     device = get_device() if config.training.device == "cuda" else config.training.device
     
+    # Get organized output directory
+    output_dir = get_output_dir(config.output_dir, config.data.name, baseline)
+    
     print(f"\n{'='*70}")
     print(f"Hierarchy Comparison Experiment: {config.experiment_name}")
-    print(f"Levels to compare: {hierarchy_levels}")
+    print(f"Baseline: {baseline.upper()}, Levels: {hierarchy_levels}")
+    print(f"Output: {output_dir}")
     print(f"{'='*70}\n")
     
     # Load dataset
@@ -209,12 +256,15 @@ def run_hierarchy_experiment(
     
     print(f"Using {len(perms)} canonical permutations (unique under group_size={config.htcl.group_size})")
     
-    # Run ER baseline
+    # Get the baseline runner
+    baseline_runner = get_baseline_runner(baseline)
+    
+    # Run baseline
     print("\n" + "-"*50)
-    print("Running ER baseline...")
+    print(f"Running {baseline.upper()} baseline...")
     print("-"*50)
     
-    er_results = run_er_experiments(
+    baseline_results = baseline_runner(
         model=model,
         train_loaders=train_loaders,
         test_loaders=test_loaders,
@@ -224,7 +274,7 @@ def run_hierarchy_experiment(
         lr=config.training.learning_rate,
         device=device,
         dataset=config.data.name,
-        output_dir=config.output_dir,
+        output_dir=output_dir,
         verbose=config.verbose,
     )
     
@@ -233,7 +283,7 @@ def run_hierarchy_experiment(
     
     for num_levels in hierarchy_levels:
         print("\n" + "-"*50)
-        print(f"Running HTCL with L={num_levels} levels...")
+        print(f"Running {baseline.upper()} + HTCL with L={num_levels} levels...")
         print("-"*50)
         
         htcl_results = train_htcl(
@@ -248,7 +298,7 @@ def run_hierarchy_experiment(
             perms=perms,
             device=device,
             dataset=config.data.name,
-            output_dir=config.output_dir,
+            output_dir=output_dir,
             catchup_enabled=config.htcl.catchup_enabled,
             catchup_epochs=config.htcl.catchup_epochs,
             verbose=config.verbose,
@@ -259,16 +309,17 @@ def run_hierarchy_experiment(
     # Compile results
     results = {
         "experiment_name": f"{config.experiment_name}_hierarchy_comparison",
+        "baseline": baseline,
         "config": config.to_dict(),
         "timestamp": datetime.now().isoformat(),
         "hierarchy_levels": hierarchy_levels,
-        "er_results": er_results,
+        "baseline_results": baseline_results,
         "htcl_results_by_level": htcl_results_by_level,
     }
     
     # Save results
     if save_results:
-        results_manager = ResultsManager(config.output_dir)
+        results_manager = ResultsManager(output_dir)
         results_path = results_manager.save_results(
             results, f"{config.experiment_name}_hierarchy"
         )
@@ -278,10 +329,10 @@ def run_hierarchy_experiment(
     if create_visualizations:
         print("\nCreating visualizations...")
         create_all_visualizations(
-            er_results=er_results,
+            er_results=baseline_results,  # Works with any baseline
             htcl_results_by_level=htcl_results_by_level,
             dataset=config.data.name,
-            output_dir=config.output_dir,
+            output_dir=output_dir,
             show=False,
         )
     
@@ -289,14 +340,18 @@ def run_hierarchy_experiment(
     print("\n" + "="*70)
     print("HIERARCHY COMPARISON SUMMARY")
     print("="*70)
-    print(f"{'Method':<15} {'Mean Acc (%)':<15} {'Std (%)':<10}")
-    print("-"*40)
-    print(f"{'ER':<15} {er_results['summary']['mean_accuracy']:<15.2f} "
-          f"{er_results['summary']['std_accuracy']:<10.2f}")
+    print(f"{'Method':<20} {'Mean Acc (%)':<15} {'Std (%)':<10} {'Time (s)':<10}")
+    print("-"*55)
+    
+    baseline_time = baseline_results.get('total_time_seconds', 0)
+    print(f"{baseline.upper():<20} {baseline_results['summary']['mean_accuracy']:<15.2f} "
+          f"{baseline_results['summary']['std_accuracy']:<10.2f} {baseline_time:<10.1f}")
+    
     for level in hierarchy_levels:
         htcl_r = htcl_results_by_level[level]
-        print(f"{'HTCL-L'+str(level):<15} {htcl_r['summary']['mean_accuracy']:<15.2f} "
-              f"{htcl_r['summary']['std_accuracy']:<10.2f}")
+        htcl_time = htcl_r.get('total_time_seconds', 0)
+        print(f"{baseline.upper()+'+HTCL-L'+str(level):<20} {htcl_r['summary']['mean_accuracy']:<15.2f} "
+              f"{htcl_r['summary']['std_accuracy']:<10.2f} {htcl_time:<10.1f}")
     print("="*70)
     
     return results
@@ -304,6 +359,7 @@ def run_hierarchy_experiment(
 
 def run_all_datasets_experiment(
     datasets: List[str] = ["SplitMNIST", "CIFAR100"],
+    baseline: str = "er",
     hierarchy_levels: List[int] = [2, 3],
     debug: bool = True,
     output_dir: str = "./results",
@@ -313,9 +369,10 @@ def run_all_datasets_experiment(
     
     Args:
         datasets: List of dataset names
+        baseline: Baseline method to use
         hierarchy_levels: Hierarchy levels to compare
         debug: Use debug mode (smaller datasets)
-        output_dir: Output directory
+        output_dir: Base output directory
     
     Returns:
         Results for all datasets
@@ -329,7 +386,7 @@ def run_all_datasets_experiment(
     
     for dataset_name in datasets:
         print(f"\n{'#'*70}")
-        print(f"# Running experiments on {dataset_name}")
+        print(f"# Running experiments on {dataset_name} with {baseline.upper()} baseline")
         print(f"{'#'*70}")
         
         if dataset_name in config_factories:
@@ -346,6 +403,7 @@ def run_all_datasets_experiment(
         try:
             results = run_hierarchy_experiment(
                 config=config,
+                baseline=baseline,
                 hierarchy_levels=hierarchy_levels,
                 save_results=True,
                 create_visualizations=True,
@@ -360,12 +418,17 @@ def run_all_datasets_experiment(
     return all_results
 
 
-def quick_test(dataset: str = "SplitMNIST", debug: bool = True) -> Dict[str, Any]:
+def quick_test(
+    dataset: str = "SplitMNIST", 
+    baseline: str = "er",
+    debug: bool = True,
+) -> Dict[str, Any]:
     """
     Run a quick test experiment to verify the setup.
     
     Args:
         dataset: Dataset to test on
+        baseline: Baseline method to use
         debug: Use debug mode
     
     Returns:
@@ -386,4 +449,9 @@ def quick_test(dataset: str = "SplitMNIST", debug: bool = True) -> Dict[str, Any
         verbose=True,
     )
     
-    return run_single_experiment(config, save_results=False)
+    return run_single_experiment(config, baseline=baseline, save_results=False)
+
+
+def list_baselines() -> List[str]:
+    """Return list of available baseline methods."""
+    return list(BASELINE_REGISTRY.keys())

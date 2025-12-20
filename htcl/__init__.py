@@ -36,10 +36,13 @@ from .models import get_model, MODEL_REGISTRY
 
 from .methods import (
     run_er_experiments,
+    run_ser_experiments,
     train_htcl,
     run_hierarchy_comparison,
     ReplayBuffer,
     generate_canonical_permutations,
+    BASELINE_REGISTRY,
+    get_baseline_runner,
 )
 
 from .utils import (
@@ -55,6 +58,7 @@ from .experiments import (
     run_hierarchy_experiment,
     run_all_datasets_experiment,
     quick_test,
+    list_baselines,
 )
 
 from .visualization import create_all_visualizations
@@ -78,10 +82,13 @@ __all__ = [
     "MODEL_REGISTRY",
     # Methods
     "run_er_experiments",
+    "run_ser_experiments",
     "train_htcl",
     "run_hierarchy_comparison",
     "ReplayBuffer",
     "generate_canonical_permutations",
+    "BASELINE_REGISTRY",
+    "get_baseline_runner",
     # Utils
     "set_seed",
     "get_device",
@@ -93,6 +100,7 @@ __all__ = [
     "run_hierarchy_experiment",
     "run_all_datasets_experiment",
     "quick_test",
+    "list_baselines",
     # Visualization
     "create_all_visualizations",
 ]

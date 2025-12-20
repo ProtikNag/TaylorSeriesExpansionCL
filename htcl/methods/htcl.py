@@ -18,11 +18,10 @@ from typing import List, Tuple, Dict, Optional, Any
 from torch.utils.data import DataLoader, ConcatDataset
 
 from .er import train_er_model
-from .buffer import ReplayBuffer
 from ..utils import (
     evaluate, 
     evaluate_all_tasks, 
-    estimate_diag_hessian_exact,
+    # estimate_diag_hessian_exact,
     estimate_diag_hessian,
 )
 
@@ -243,8 +242,6 @@ def global_catchup(
     if not recent_loaders or num_iterations <= 0:
         return global_model
     
-    from .er import train_er_model
-    
     # Combine recent loaders into one
     combined_datasets = [loader.dataset for loader in recent_loaders]
     combined_loader = DataLoader(
@@ -390,7 +387,6 @@ def generate_canonical_permutations(
     Returns:
         List of unique canonical permutations
     """
-    import random
     random.seed(seed)
     
     task_indices = list(range(num_tasks))
