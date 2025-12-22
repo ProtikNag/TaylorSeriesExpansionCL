@@ -67,7 +67,6 @@ __all__ = [
     "global_catchup",
     "select_best_permutation",
     "train_htcl",
-    "run_hierarchy_comparison",
     "generate_canonical_permutations",
     # Registry
     "BASELINE_REGISTRY",
