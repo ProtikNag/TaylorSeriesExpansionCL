@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.optim as optim
 import copy
 import random
-from itertools import permutations
+from itertools import permutations, product
 from typing import List, Tuple, Dict, Optional, Any
 from torch.utils.data import DataLoader, ConcatDataset
 
@@ -357,6 +357,19 @@ def _canonicalize_perm(perm: Tuple[int, ...], group_size: int) -> Tuple[int, ...
     return tuple(grouped)
 
 
+def _intra_group_variants(perm: Tuple[int, ...], group_size: int):
+    """
+    Given a permutation `perm`, yield all permutations that are canonical-equivalent
+    by permuting elements *within each group position*.
+    """
+    n = len(perm)
+    groups = [perm[i:i + group_size] for i in range(0, n, group_size)]
+    group_perms = [list(permutations(g)) for g in groups]
+    for combo in product(*group_perms):
+        # flatten tuple-of-tuples into one tuple
+        yield tuple(x for g in combo for x in g)
+
+
 def generate_canonical_permutations(
         num_tasks: int,
         group_size: int = 2,
@@ -364,61 +377,45 @@ def generate_canonical_permutations(
         seed: int = 42,
 ) -> List[Tuple[int, ...]]:
     """
-    Generate unique canonical permutations for efficient HTCL evaluation.
-    
-    For HTCL, permutations like (0,1,2,3) and (1,0,3,2) are equivalent 
-    because the internal group ordering doesn't matter - only which tasks
-    are grouped together. This function generates permutations that are
-    unique under canonical form.
-    
-    Args:
-        num_tasks: Number of tasks
-        group_size: Tasks per group (k)
-        max_perms: Maximum number of unique permutations to generate
-        seed: Random seed for reproducibility
-    
-    Returns:
-        List of unique canonical permutations
+    Simple implementation per your procedure:
+      1) take a random permutation of num_tasks
+      2) generate all its canonical permutations (permute within groups)
+      3) add them one-by-one to the result until max_perms
+      4) if still short, pick another random permutation that yields new items
+      5) repeat until result has max_perms or we hit max attempts
+
+    Returns a list (length <= max_perms) of permutations (tuples).
     """
-    random.seed(seed)
-
+    rnd = random.Random(seed)
     task_indices = list(range(num_tasks))
-    seen_canonical = set()
-    unique_perms = []
+    seen = set()  # canonical forms we've already produced (optional)
+    added = set()  # actual permutations added to result
+    result: List[Tuple[int, ...]] = []
 
-    # If total permutations are small, just enumerate all unique ones
-    from math import factorial
-    total_perms = factorial(num_tasks)
+    max_attempts = max_perms * 200  # safety cap
+    attempts = 0
 
-    if total_perms <= max_perms * 10:
-        # Enumerate all and filter
-        from itertools import permutations as gen_perms
-        all_perms = list(gen_perms(task_indices))
-        random.shuffle(all_perms)
+    while len(result) < max_perms and attempts < max_attempts:
+        attempts += 1
+        # pick a random permutation
+        base = tuple(rnd.sample(task_indices, num_tasks))
 
-        for perm in all_perms:
-            canonical = _canonicalize_perm(perm, group_size)
-            if canonical not in seen_canonical:
-                seen_canonical.add(canonical)
-                unique_perms.append(perm)
-                if len(unique_perms) >= max_perms:
-                    break
-    else:
-        # Random sampling with rejection
-        attempts = 0
-        max_attempts = max_perms * 100  # Prevent infinite loop
+        # iterate all intra-group variants of this base permutation
+        for variant in _intra_group_variants(base, group_size):
+            if len(result) >= max_perms:
+                break
+            # optional: skip if exact variant already added
+            if variant in added:
+                continue
+            # optional: skip if its canonical form already fully covered?
+            # (you said to allow canonically similar permutations, so we only skip exact duplicates)
+            added.add(variant)
+            result.append(variant)
 
-        while len(unique_perms) < max_perms and attempts < max_attempts:
-            perm = tuple(random.sample(task_indices, num_tasks))
-            canonical = _canonicalize_perm(perm, group_size)
+        # small optimization: if this base produced nothing new, continue to next sample
+        # loop will exit when result has enough items
 
-            if canonical not in seen_canonical:
-                seen_canonical.add(canonical)
-                unique_perms.append(perm)
-
-            attempts += 1
-
-    return unique_perms
+    return result
 
 
 def train_htcl(
@@ -649,83 +646,5 @@ def train_htcl(
             "per_task_std": [df[f"Task{t + 1}"].std() for t in range(num_tasks)],
             "total_time": total_elapsed_time,
             "avg_time_per_perm": total_elapsed_time / max(len(seen_canonical), 1),
-        }
-    }
-
-
-def run_hierarchy_comparison(
-        model: nn.Module,
-        train_loaders: List[DataLoader],
-        test_loaders: List[DataLoader],
-        hierarchy_levels: List[int] = [2, 3, 4, 5],
-        group_size: int = 2,
-        num_epochs: int = 5,
-        lr: float = 0.01,
-        buffer_size: int = 100,
-        perms: Optional[List[Tuple[int, ...]]] = None,
-        device: str = "cuda",
-        dataset: str = "Unknown",
-        output_dir: str = "./results",
-        catchup_enabled: bool = True,
-        verbose: bool = True,
-) -> Dict[str, Any]:
-    """
-    Compare different hierarchy depths.
-    
-    Args:
-        model: Base model
-        train_loaders: Training loaders
-        test_loaders: Test loaders
-        hierarchy_levels: List of L values to compare
-        group_size: Tasks per group
-        num_epochs: Training epochs
-        lr: Learning rate
-        buffer_size: Buffer size
-        perms: Task permutations
-        device: Device
-        dataset: Dataset name
-        output_dir: Output directory
-        catchup_enabled: Enable catch-up
-        verbose: Print progress
-    
-    Returns:
-        Comparison results
-    """
-    all_results = {}
-
-    for num_levels in hierarchy_levels:
-        if verbose:
-            print(f"\n{'#' * 60}")
-            print(f"# Testing {num_levels}-level hierarchy")
-            print(f"{'#' * 60}")
-
-        result = train_htcl(
-            model=model,
-            train_loaders=train_loaders,
-            test_loaders=test_loaders,
-            num_levels=num_levels,
-            group_size=group_size,
-            num_epochs=num_epochs,
-            lr=lr,
-            buffer_size=buffer_size,
-            perms=perms,
-            device=device,
-            dataset=dataset,
-            output_dir=output_dir,
-            catchup_enabled=catchup_enabled,
-            verbose=verbose,
-        )
-
-        all_results[num_levels] = result
-
-    return {
-        "dataset": dataset,
-        "hierarchy_comparison": all_results,
-        "summary": {
-            level: {
-                "mean_acc": res["summary"]["mean_accuracy"],
-                "std_acc": res["summary"]["std_accuracy"]
-            }
-            for level, res in all_results.items()
         }
     }

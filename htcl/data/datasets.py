@@ -21,7 +21,7 @@ class BaseContinualDataset(ABC):
         batch_size: int = 64,
         seed: int = 42,
         debug: bool = False,
-        samples_per_class: int = 60,
+        samples_per_class: int = 150,
         num_workers: int = 2,
     ):
         self.data_dir = data_dir

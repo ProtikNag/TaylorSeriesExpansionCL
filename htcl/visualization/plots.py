@@ -500,7 +500,8 @@ def plot_accuracy_heatmap(
         xticklabels=[f"T{i+1}" for i in range(acc_matrix.shape[1])],
         yticklabels=[f"P{i+1}" for i in range(acc_matrix.shape[0])],
         vmin=0, vmax=100,
-        cbar_kws={"label": "Accuracy (%)"}
+        cbar_kws={"label": "Accuracy (%)"},
+        annot_kws={'color': 'black', 'weight': 'bold'},
     )
     
     ax.set_xlabel("Task", fontweight='bold')
@@ -677,15 +678,18 @@ def create_all_visualizations(
     labels = ["ER"] + [f"HTCL-L{l}" for l in sorted(htcl_results_by_level.keys())]
     results_list = [er_results] + [htcl_results_by_level[l] for l in sorted(htcl_results_by_level.keys())]
     plot_mean_accuracy_with_std(results_list, labels, dataset, output_dir, show)
+
+    # 5. Forgetting comparison (new) — compute and plot forgetting across the same result list
+    plot_forgetting_comparison(results_list, labels, dataset, output_dir, show)
     
-    # 5. Comprehensive comparison
+    # 6. Comprehensive comparison
     plot_comprehensive_comparison(er_results, htcl_results_by_level, dataset, output_dir, show)
     
-    # 6. Heatmaps
+    # 7. Heatmaps
     plot_accuracy_heatmap(er_results, "ER", dataset, output_dir, show)
     plot_accuracy_heatmap(htcl_l2, "HTCL-L2", dataset, output_dir, show)
     
-    # 7. Time comparisons
+    # 8. Time comparisons
     plot_time_comparison(er_results, htcl_results_by_level, dataset, output_dir, show)
     plot_hierarchy_time_comparison(htcl_results_by_level, dataset, output_dir, show)
     
