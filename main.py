@@ -23,9 +23,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Now import from htcl
 from htcl import (
     run_hierarchy_experiment,
-    run_single_experiment,
-    quick_test,
-    list_baselines,
     get_mnist_config,
     get_cifar100_config,
     get_newsgroups_config,

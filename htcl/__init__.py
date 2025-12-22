@@ -38,7 +38,6 @@ from .methods import (
     run_er_experiments,
     run_ser_experiments,
     train_htcl,
-    run_hierarchy_comparison,
     ReplayBuffer,
     generate_canonical_permutations,
     BASELINE_REGISTRY,
@@ -54,10 +53,7 @@ from .utils import (
 )
 
 from .experiments import (
-    run_single_experiment,
     run_hierarchy_experiment,
-    run_all_datasets_experiment,
-    quick_test,
     list_baselines,
 )
 
@@ -84,7 +80,6 @@ __all__ = [
     "run_er_experiments",
     "run_ser_experiments",
     "train_htcl",
-    "run_hierarchy_comparison",
     "ReplayBuffer",
     "generate_canonical_permutations",
     "BASELINE_REGISTRY",
@@ -96,10 +91,7 @@ __all__ = [
     "evaluate_all_tasks",
     "ResultsManager",
     # Experiments
-    "run_single_experiment",
     "run_hierarchy_experiment",
-    "run_all_datasets_experiment",
-    "quick_test",
     "list_baselines",
     # Visualization
     "create_all_visualizations",

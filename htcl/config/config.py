@@ -18,7 +18,7 @@ class DataConfig:
     batch_size: int = 32
     seed: int = 42
     debug: bool = False
-    samples_per_class: int = 60
+    samples_per_class: int = 500
     
     # Dataset-specific defaults
     @classmethod

@@ -26,8 +26,8 @@ python main.py \
   --epochs 10 \
   --lr 0.01 \
   --batch-size 64 \
-  --buffer-size 30 \
-  --catchup-epochs 5 \
+  --buffer-size 50 \
+  --catchup-epochs 10 \
   --seed 42
 
 python main.py \
@@ -38,8 +38,8 @@ python main.py \
   --epochs 10 \
   --lr 0.01 \
   --batch-size 64 \
-  --buffer-size 30 \
-  --catchup-epochs 5 \
+  --buffer-size 50 \
+  --catchup-epochs 10 \
   --seed 42
 
 python main.py \
@@ -50,6 +50,6 @@ python main.py \
   --epochs 10 \
   --lr 0.01 \
   --batch-size 64 \
-  --buffer-size 30 \
-  --catchup-epochs 5 \
+  --buffer-size 50 \
+  --catchup-epochs 10 \
   --seed 42
