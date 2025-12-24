@@ -212,7 +212,7 @@ def taylor_update(
 
 def global_catchup(
         global_model: nn.Module,
-        combined_loader: List[DataLoader],
+        combined_loader: DataLoader,
         num_iterations: int,
         device: str,
         eta: float = 0.1,
@@ -222,28 +222,49 @@ def global_catchup(
 ) -> nn.Module:
     """
     Allow global model to catch up on recent tasks using Taylor updates.
-    
+
     This addresses the issue where the global model lags behind
     on recently seen tasks because it uses conservative updates.
-    
+
     Unlike backpropagation-based fine-tuning, this uses the same
     Taylor series update rule to maintain consistency with HTCL.
-    
+
     Args:
         global_model: Global model to update
-        combined_loader: DataLoaders for recent tasks
+        combined_loader: DataLoader for recent tasks
         num_iterations: Number of Taylor update iterations
         device: Device
         eta: Step size for Taylor update (higher = more aggressive catch-up)
         max_norm: Maximum norm for update clipping
         lambda_reg: Regularization strength (lower = more aggressive toward local)
         verbose: Print progress
-    
+
     Returns:
-        Updated global model
+        Best performing global model across all iterations
     """
     if not combined_loader or num_iterations <= 0:
         return global_model
+
+    # Track best model
+    best_acc = -float('inf')
+    best_model_state = copy.deepcopy(global_model.state_dict())
+
+    # Evaluate initial model accuracy
+    global_model.eval()
+    correct, total = 0, 0
+    with torch.no_grad():
+        for inputs, labels in combined_loader:
+            inputs = inputs.to(device)
+            labels = labels.to(device).long()
+            outputs = global_model(inputs)
+            _, predicted = outputs.max(1)
+            correct += predicted.eq(labels).sum().item()
+            total += labels.size(0)
+    initial_acc = 100.0 * correct / max(total, 1)
+    best_acc = initial_acc
+
+    if verbose:
+        print(f"    Catchup initial accuracy: {initial_acc:.1f}%")
 
     for iteration in range(num_iterations):
         # Train a temporary local model on recent tasks (quick adaptation)
@@ -276,20 +297,34 @@ def global_catchup(
             verbose=False
         )
 
-        if verbose:
-            # Evaluate catch-up progress
-            global_model.eval()
-            correct, total = 0, 0
-            with torch.no_grad():
-                for inputs, labels in combined_loader:
-                    inputs = inputs.to(device)
-                    labels = labels.to(device).long()
-                    outputs = global_model(inputs)
-                    _, predicted = outputs.max(1)
-                    correct += predicted.eq(labels).sum().item()
-                    total += labels.size(0)
-            acc = 100.0 * correct / max(total, 1)
-            print(f"    Catchup iteration {iteration + 1}/{num_iterations}, Acc: {acc:.1f}%")
+        # Evaluate current model accuracy
+        global_model.eval()
+        correct, total = 0, 0
+        with torch.no_grad():
+            for inputs, labels in combined_loader:
+                inputs = inputs.to(device)
+                labels = labels.to(device).long()
+                outputs = global_model(inputs)
+                _, predicted = outputs.max(1)
+                correct += predicted.eq(labels).sum().item()
+                total += labels.size(0)
+        current_acc = 100.0 * correct / max(total, 1)
+
+        # Update best model if current is better
+        if current_acc > best_acc:
+            best_acc = current_acc
+            best_model_state = copy.deepcopy(global_model.state_dict())
+            if verbose:
+                print(f"    Catchup iteration {iteration + 1}/{num_iterations}, Acc: {current_acc:.1f}% (new best)")
+        else:
+            if verbose:
+                print(f"    Catchup iteration {iteration + 1}/{num_iterations}, Acc: {current_acc:.1f}%")
+
+    # Restore best model
+    global_model.load_state_dict(best_model_state)
+
+    if verbose:
+        print(f"    Catchup complete. Best accuracy: {best_acc:.1f}%")
 
     return global_model
 
@@ -583,7 +618,7 @@ def train_htcl(
                     combined_loader,
                     num_iterations=catchup_epochs,
                     device=device,
-                    eta=0.99,  # More aggressive for catch-up
+                    eta=0.999,  # More aggressive for catch-up
                     max_norm=max_norm,
                     lambda_reg=500.0,  # Higher reg = move more toward local
                     verbose=verbose
