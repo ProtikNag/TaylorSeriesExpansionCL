@@ -1,0 +1,178 @@
+{
+  "experiment_name": "mnist_L2_hierarchy_comparison",
+  "baseline": "er",
+  "config": {
+    "data": {
+      "name": "SplitMNIST",
+      "data_dir": "./data",
+      "num_tasks": 5,
+      "batch_size": 32,
+      "seed": 42,
+      "debug": true,
+      "samples_per_class": 2
+    },
+    "model": {
+      "num_classes_per_task": 2,
+      "freeze_backbone": false,
+      "hidden_dim": 128,
+      "dropout": 0.5
+    },
+    "training": {
+      "num_epochs": 1,
+      "learning_rate": 0.01,
+      "momentum": 0.9,
+      "weight_decay": 0.0,
+      "device": "cuda"
+    },
+    "htcl": {
+      "num_levels": 2,
+      "group_size": 2,
+      "buffer_size": 500,
+      "buffer_beta": 0.5,
+      "eta": 1.0,
+      "max_norm": 1.0,
+      "lambda_reg": 1000.0,
+      "catchup_enabled": true,
+      "catchup_epochs": 1,
+      "catchup_lr_factor": 0.1,
+      "num_permutations": 2
+    },
+    "experiment_name": "mnist_L2",
+    "output_dir": "./results",
+    "save_models": true,
+    "verbose": true
+  },
+  "timestamp": "2025-12-24T12:25:21.406116",
+  "hierarchy_levels": [
+    2
+  ],
+  "baseline_results": {
+    "method": "ER",
+    "dataset": "SplitMNIST",
+    "results": [
+      {
+        "sequence": [
+          0,
+          4,
+          2,
+          1,
+          3
+        ],
+        "accuracies": [
+          50.0,
+          50.0,
+          50.0,
+          50.0,
+          50.0
+        ],
+        "mean_acc": 50.0,
+        "time_seconds": 17.955689907073975
+      },
+      {
+        "sequence": [
+          0,
+          4,
+          1,
+          2,
+          3
+        ],
+        "accuracies": [
+          50.0,
+          50.0,
+          50.0,
+          50.0,
+          50.0
+        ],
+        "mean_acc": 50.0,
+        "time_seconds": 18.87098002433777
+      }
+    ],
+    "total_time_seconds": 36.82674193382263,
+    "summary": {
+      "mean_accuracy": 50.0,
+      "std_accuracy": 0.0,
+      "per_task_mean": [
+        50.0,
+        50.0,
+        50.0,
+        50.0,
+        50.0
+      ],
+      "per_task_std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_time": 36.82674193382263,
+      "avg_time_per_perm": 18.413370966911316
+    }
+  },
+  "htcl_results_by_level": {
+    "2": {
+      "method": "HTCL-L2",
+      "dataset": "SplitMNIST",
+      "num_levels": 2,
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 56.19319295883179
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 56.19319295883179
+        }
+      ],
+      "total_time_seconds": 56.193276166915894,
+      "summary": {
+        "mean_accuracy": 50.0,
+        "std_accuracy": 0.0,
+        "per_task_mean": [
+          50.0,
+          50.0,
+          50.0,
+          50.0,
+          50.0
+        ],
+        "per_task_std": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "total_time": 56.193276166915894,
+        "avg_time_per_perm": 56.193276166915894
+      }
+    }
+  }
+}

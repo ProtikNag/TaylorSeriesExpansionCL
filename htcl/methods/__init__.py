@@ -25,13 +25,28 @@ from .htcl import (
     train_htcl,
     generate_canonical_permutations,
 )
+from .dualnet import (
+    train_dualnet_single_epoch,
+    train_dualnet_on_task,
+    train_dualnet_model,
+    run_dualnet_experiments
+)
+from .spectral_reg import (
+    train_spectral_single_epoch,
+    train_spectral_on_task,
+    train_spectral_model,
+    run_spectral_experiments
+)
 
 # Registry of available baseline methods
 BASELINE_REGISTRY = {
     "er": run_er_experiments,
     "ser": run_ser_experiments,
     "der": run_der_experiments,
+    "dualnet": run_dualnet_experiments,
+    "spectral": run_spectral_experiments,
 }
+
 
 def get_baseline_runner(name: str):
     """Get the experiment runner for a baseline method."""
@@ -40,6 +55,7 @@ def get_baseline_runner(name: str):
         available = list(BASELINE_REGISTRY.keys())
         raise ValueError(f"Unknown baseline: {name}. Available: {available}")
     return BASELINE_REGISTRY[name_lower]
+
 
 __all__ = [
     # Buffer
@@ -61,6 +77,16 @@ __all__ = [
     "train_der_on_task",
     "train_der_model",
     "run_der_experiments",
+    # DualNet
+    "train_dualnet_single_epoch",
+    "train_dualnet_on_task",
+    "train_dualnet_model",
+    "run_dualnet_experiments",
+    # Spectral Regularization
+    "train_spectral_single_epoch",
+    "train_spectral_on_task",
+    "train_spectral_model",
+    "run_spectral_experiments",
     # HTCL
     "HierarchicalModel",
     "taylor_update",

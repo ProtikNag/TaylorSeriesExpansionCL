@@ -1,0 +1,21 @@
+{
+  "method": "ER",
+  "dataset": "SplitMNIST",
+  "total_time_seconds": 35.9161651134491,
+  "mean_accuracy": 50.0,
+  "std_accuracy": 0.0,
+  "per_task_mean": [
+    50.0,
+    50.0,
+    50.0,
+    50.0,
+    50.0
+  ],
+  "per_task_std": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

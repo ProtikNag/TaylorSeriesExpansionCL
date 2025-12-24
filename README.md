@@ -119,7 +119,6 @@ python main.py \
 --output-dir    Base output directory (default: ./results)
 --seed          Random seed for reproducibility
 --list-baselines  Show available baseline methods and exit
---quick-test    Run a quick verification test
 ```
 
 ## 🔬 Available Baseline Methods

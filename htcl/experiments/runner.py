@@ -7,10 +7,10 @@ Results are organized by dataset and baseline method:
 """
 
 import os
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any
 from datetime import datetime
 
-from ..config import ExperimentConfig, get_mnist_config, get_cifar100_config
+from ..config import ExperimentConfig
 from ..data import get_dataset
 from ..models import get_model
 from ..methods import (

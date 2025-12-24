@@ -1,9 +1,6 @@
 """
 Continual Learning Dataset implementations.
 Provides a unified interface for various CL benchmarks.
-
-IMPORTANT: samples_per_class should be passed from config.
-The default value here (None) means "use full dataset".
 """
 
 import torch
@@ -24,22 +21,9 @@ class BaseContinualDataset(ABC):
         batch_size: int = 64,
         seed: int = 42,
         debug: bool = False,
-        samples_per_class: Optional[int] = None,  # None = use full dataset
+        samples_per_class: int = 300,
         num_workers: int = 2,
     ):
-        """
-        Initialize the continual learning dataset.
-        
-        Args:
-            data_dir: Directory for storing/loading data
-            num_tasks: Number of tasks to split into
-            batch_size: Batch size for data loaders
-            seed: Random seed for reproducibility
-            debug: If True and samples_per_class is set, limit samples
-            samples_per_class: Max samples per class (None = full dataset)
-                              This should come from config.DEBUG_SAMPLES_PER_CLASS
-            num_workers: DataLoader workers
-        """
         self.data_dir = data_dir
         self.num_tasks = num_tasks
         self.batch_size = batch_size
@@ -52,11 +36,6 @@ class BaseContinualDataset(ABC):
         self.label_maps: List[Dict[int, int]] = []
         self.task_train_loaders: List[DataLoader] = []
         self.task_test_loaders: List[DataLoader] = []
-    
-    @property
-    def should_limit_samples(self) -> bool:
-        """Check if we should limit samples (debug mode with samples_per_class set)."""
-        return self.debug and self.samples_per_class is not None
     
     @abstractmethod
     def _load_data(self):
@@ -116,22 +95,6 @@ class BaseContinualDataset(ABC):
         return 0
 
 
-class RemappedSubset(Dataset):
-    """Dataset wrapper that remaps labels for task-specific classification."""
-    
-    def __init__(self, dataset: Dataset, indices: List[int], label_map: Dict[int, int]):
-        self.dataset = dataset
-        self.indices = indices
-        self.label_map = label_map
-    
-    def __len__(self):
-        return len(self.indices)
-    
-    def __getitem__(self, idx):
-        data, label = self.dataset[self.indices[idx]]
-        return data, self.label_map.get(int(label), int(label))
-
-
 class ContinualSplitMNIST(BaseContinualDataset):
     """SplitMNIST dataset for continual learning."""
     
@@ -163,7 +126,7 @@ class ContinualSplitMNIST(BaseContinualDataset):
     def _build_task_loaders(self):
         for task_id, class_subset in enumerate(self.task_splits):
             # Get indices for this task
-            if self.should_limit_samples:
+            if self.debug:
                 train_indices = self._select_subset_indices(
                     self.train_dataset, class_subset, self.samples_per_class
                 )
@@ -235,7 +198,7 @@ class ContinualCIFAR100(BaseContinualDataset):
     
     def _build_task_loaders(self):
         for task_id, class_subset in enumerate(self.task_splits):
-            if self.should_limit_samples:
+            if self.debug:
                 train_indices = self._select_subset_indices(
                     self.train_dataset, class_subset, self.samples_per_class
                 )
@@ -269,6 +232,22 @@ class ContinualCIFAR100(BaseContinualDataset):
                 DataLoader(test_subset, batch_size=self.batch_size,
                           shuffle=False, num_workers=self.num_workers)
             )
+
+
+class RemappedSubset(Dataset):
+    """Dataset wrapper that remaps labels according to a mapping dict."""
+    
+    def __init__(self, dataset: Dataset, indices: List[int], label_map: Dict[int, int]):
+        self.dataset = dataset
+        self.indices = indices
+        self.label_map = label_map
+    
+    def __len__(self):
+        return len(self.indices)
+    
+    def __getitem__(self, idx):
+        data, label = self.dataset[self.indices[idx]]
+        return data, self.label_map.get(int(label), int(label))
 
 
 class TextDataset(Dataset):
@@ -325,7 +304,7 @@ class Continual20Newsgroups(BaseContinualDataset):
     
     def _build_task_loaders(self):
         for task_id, class_subset in enumerate(self.task_splits):
-            if self.should_limit_samples:
+            if self.debug:
                 train_indices = self._select_subset_indices(
                     self.train_dataset, class_subset, self.samples_per_class
                 )
@@ -410,7 +389,7 @@ class ContinualCora(BaseContinualDataset):
     
     def _build_task_loaders(self):
         for task_id, class_subset in enumerate(self.task_splits):
-            if self.should_limit_samples:
+            if self.debug:
                 train_indices = []
                 class_counts = {cls: 0 for cls in class_subset}
                 for idx in self.train_node_indices:

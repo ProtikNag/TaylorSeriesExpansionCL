@@ -1,24 +1,12 @@
 """
 Configuration classes for HTCL experiments.
 Uses dataclasses for clean, type-hinted configuration management.
-
-IMPORTANT: samples_per_class is ONLY defined in DEBUG_SAMPLES_PER_CLASS constant.
-This is the single source of truth for debug mode sample counts.
 """
 
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 import json
 import os
-
-
-# =============================================================================
-# SINGLE SOURCE OF TRUTH FOR DEBUG SAMPLES
-# =============================================================================
-# Change this value to modify samples_per_class for ALL datasets in debug mode.
-# In non-debug mode, the full dataset is used.
-DEBUG_SAMPLES_PER_CLASS: int = 300
-# =============================================================================
 
 
 @dataclass
@@ -30,58 +18,43 @@ class DataConfig:
     batch_size: int = 32
     seed: int = 42
     debug: bool = False
+    samples_per_class: int = 1000
     
-    # samples_per_class is computed based on debug mode
-    # Do NOT set this directly - it's controlled by DEBUG_SAMPLES_PER_CLASS constant
-    _samples_per_class: Optional[int] = field(default=None, repr=False)
-    
-    @property
-    def samples_per_class(self) -> Optional[int]:
-        """
-        Returns samples_per_class only in debug mode.
-        In non-debug mode, returns None (use full dataset).
-        """
-        if self.debug:
-            return self._samples_per_class or DEBUG_SAMPLES_PER_CLASS
-        return None  # Use full dataset
-    
-    @samples_per_class.setter
-    def samples_per_class(self, value: int):
-        """Allow explicit override if needed."""
-        self._samples_per_class = value
-    
+    # Dataset-specific defaults
     @classmethod
     def for_dataset(cls, name: str, debug: bool = False) -> "DataConfig":
         """Factory method for dataset-specific configurations."""
-        # Dataset-specific settings (num_tasks, batch_size, etc.)
-        # samples_per_class is NOT set here - it comes from DEBUG_SAMPLES_PER_CLASS
-        dataset_settings = {
-            "SplitMNIST": {
-                "num_tasks": 5,
-                "batch_size": 32,
-            },
-            "CIFAR100": {
-                "num_tasks": 10,
-                "batch_size": 32,
-            },
-            "Cora": {
-                "num_tasks": 3,
-                "batch_size": 32,
-            },
-            "20Newsgroups": {
-                "num_tasks": 5,
-                "batch_size": 32,
-            },
+        configs = {
+            "SplitMNIST": cls(
+                name="SplitMNIST",
+                num_tasks=5,
+                batch_size=32,
+                debug=debug,
+                samples_per_class=60
+            ),
+            "CIFAR100": cls(
+                name="CIFAR100",
+                num_tasks=10,
+                batch_size=32,
+                debug=debug,
+                samples_per_class=60
+            ),
+            "Cora": cls(
+                name="Cora",
+                num_tasks=3,
+                batch_size=32,
+                debug=debug,
+                samples_per_class=60
+            ),
+            "20Newsgroups": cls(
+                name="20Newsgroups",
+                num_tasks=5,
+                batch_size=32,
+                debug=debug,
+                samples_per_class=60
+            ),
         }
-        
-        settings = dataset_settings.get(name, {})
-        return cls(
-            name=name,
-            num_tasks=settings.get("num_tasks", 5),
-            batch_size=settings.get("batch_size", 32),
-            debug=debug,
-            _samples_per_class=DEBUG_SAMPLES_PER_CLASS if debug else None,
-        )
+        return configs.get(name, cls(name=name, debug=debug))
 
 
 @dataclass
@@ -158,15 +131,7 @@ class ExperimentConfig:
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return {
-            "data": {
-                "name": self.data.name,
-                "data_dir": self.data.data_dir,
-                "num_tasks": self.data.num_tasks,
-                "batch_size": self.data.batch_size,
-                "seed": self.data.seed,
-                "debug": self.data.debug,
-                "samples_per_class": self.data.samples_per_class,
-            },
+            "data": self.data.__dict__,
             "model": self.model.__dict__,
             "training": self.training.__dict__,
             "htcl": self.htcl.__dict__,
@@ -179,15 +144,8 @@ class ExperimentConfig:
     @classmethod
     def from_dict(cls, data: dict) -> "ExperimentConfig":
         """Create from dictionary."""
-        data_config_dict = data.get("data", {})
-        # Handle samples_per_class carefully
-        samples = data_config_dict.pop("samples_per_class", None)
-        data_config = DataConfig(**data_config_dict)
-        if samples is not None:
-            data_config._samples_per_class = samples
-            
         return cls(
-            data=data_config,
+            data=DataConfig(**data.get("data", {})),
             model=ModelConfig(**data.get("model", {})),
             training=TrainingConfig(**data.get("training", {})),
             htcl=HTCLConfig(**data.get("htcl", {})),
@@ -198,11 +156,7 @@ class ExperimentConfig:
         )
 
 
-# =============================================================================
-# PREDEFINED EXPERIMENT CONFIGURATIONS
-# These functions ARE used by main.py - do not remove!
-# =============================================================================
-
+# Predefined experiment configurations
 def get_mnist_config(debug: bool = False, num_levels: int = 2) -> ExperimentConfig:
     """Get configuration for SplitMNIST experiments."""
     return ExperimentConfig(

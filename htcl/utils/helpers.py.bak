@@ -1,11 +1,5 @@
 """
 Utility functions for HTCL experiments.
-
-IMPORTANT CHANGES:
-- ResultsManager now properly organizes files:
-  - CSV files go in 'csv/' folder
-  - JSON files go in 'json/' folder  
-  - Plots go in 'plots/png/' and 'plots/svg/' folders
 """
 
 import torch
@@ -246,73 +240,36 @@ def estimate_diag_hessian_exact(
 
 
 class ResultsManager:
-    """
-    Manages saving and loading experiment results.
-    
-    Directory structure:
-        output_dir/
-        ├── csv/           # CSV result files
-        ├── json/          # JSON metadata/summary files
-        ├── plots/
-        │   ├── png/       # PNG plots (300 DPI)
-        │   └── svg/       # SVG plots (vector)
-        └── checkpoints/   # Model checkpoints
-    """
+    """Manages saving and loading experiment results."""
     
     def __init__(self, output_dir: str = "./results"):
         self.output_dir = output_dir
-        
-        # Properly organized subdirectories
         self.csv_dir = os.path.join(output_dir, "csv")
-        self.json_dir = os.path.join(output_dir, "json")
         self.plots_png_dir = os.path.join(output_dir, "plots", "png")
         self.plots_svg_dir = os.path.join(output_dir, "plots", "svg")
         self.checkpoints_dir = os.path.join(output_dir, "checkpoints")
         
         # Create directories
-        for d in [self.csv_dir, self.json_dir, self.plots_png_dir, 
-                  self.plots_svg_dir, self.checkpoints_dir]:
+        for d in [self.csv_dir, self.plots_png_dir, self.plots_svg_dir, self.checkpoints_dir]:
             os.makedirs(d, exist_ok=True)
-    
-    def get_csv_path(self, filename: str) -> str:
-        """Get full path for a CSV file."""
-        if not filename.endswith('.csv'):
-            filename = f"{filename}.csv"
-        return os.path.join(self.csv_dir, filename)
-    
-    def get_json_path(self, filename: str) -> str:
-        """Get full path for a JSON file."""
-        if not filename.endswith('.json'):
-            filename = f"{filename}.json"
-        return os.path.join(self.json_dir, filename)
     
     def save_results(
         self,
         results: Dict[str, Any],
         experiment_name: str,
         timestamp: bool = True
-    ) -> str:
-        """Save results to JSON file in the json/ directory."""
+    ):
+        """Save results to JSON file."""
         if timestamp:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{experiment_name}_{ts}.json"
         else:
             filename = f"{experiment_name}.json"
         
-        path = os.path.join(self.json_dir, filename)
+        path = os.path.join(self.csv_dir, filename)
         with open(path, 'w') as f:
             json.dump(results, f, indent=2, default=str)
         
-        return path
-    
-    def save_csv(
-        self,
-        df,  # pandas DataFrame
-        filename: str
-    ) -> str:
-        """Save DataFrame to CSV file in the csv/ directory."""
-        path = self.get_csv_path(filename)
-        df.to_csv(path, index=False)
         return path
     
     def save_model(
@@ -320,7 +277,7 @@ class ResultsManager:
         model: nn.Module,
         name: str,
         metadata: Optional[Dict] = None
-    ) -> str:
+    ):
         """Save model checkpoint."""
         checkpoint = {
             "state_dict": model.state_dict(),
@@ -347,52 +304,6 @@ class ResultsManager:
             os.path.join(self.plots_png_dir, f"{name}.png"),
             os.path.join(self.plots_svg_dir, f"{name}.svg")
         )
-    
-    @staticmethod
-    def reorganize_existing_results(base_dir: str) -> None:
-        """
-        Utility to reorganize existing messy results into proper structure.
-        
-        Call this once to fix the current file organization:
-            ResultsManager.reorganize_existing_results("./results/splitmnist/er")
-        """
-        import shutil
-        
-        # Create proper directories
-        csv_dir = os.path.join(base_dir, "csv")
-        json_dir = os.path.join(base_dir, "json")
-        plots_dir = os.path.join(base_dir, "plots")
-        plots_png = os.path.join(plots_dir, "png")
-        plots_svg = os.path.join(plots_dir, "svg")
-        
-        for d in [csv_dir, json_dir, plots_png, plots_svg]:
-            os.makedirs(d, exist_ok=True)
-        
-        # Move files based on extension
-        for root, dirs, files in os.walk(base_dir):
-            # Skip if already in proper location
-            if 'csv' in root or 'json' in root or 'plots' in root:
-                continue
-                
-            for file in files:
-                src = os.path.join(root, file)
-                
-                if file.endswith('.json'):
-                    dst = os.path.join(json_dir, file)
-                elif file.endswith('.csv'):
-                    dst = os.path.join(csv_dir, file)
-                elif file.endswith('.png'):
-                    dst = os.path.join(plots_png, file)
-                elif file.endswith('.svg'):
-                    dst = os.path.join(plots_svg, file)
-                else:
-                    continue
-                
-                if src != dst and os.path.exists(src):
-                    print(f"Moving: {src} -> {dst}")
-                    shutil.move(src, dst)
-        
-        print(f"Reorganization complete for: {base_dir}")
 
 
 class EarlyStopping:

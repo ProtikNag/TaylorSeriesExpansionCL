@@ -89,7 +89,6 @@ def main():
 
     # Modes
     parser.add_argument("--debug", action="store_true", help="Use smaller dataset")
-    parser.add_argument("--quick-test", action="store_true", help="Run quick test")
     parser.add_argument("--single", action="store_true", help="Run single experiment")
     parser.add_argument("--no-visualizations", action="store_true", help="Skip visualizations")
     parser.add_argument("--list-baselines", action="store_true", help="List available baselines and exit")
@@ -105,12 +104,6 @@ def main():
         print("Available baseline methods:")
         for name in available_baselines:
             print(f"  - {name}")
-        return
-
-    # Quick test mode
-    if args.quick_test:
-        print(f"Running quick test with {args.baseline.upper()} baseline...")
-        quick_test(baseline=args.baseline)
         return
 
     # Get config
@@ -152,21 +145,13 @@ def main():
     print(f"  Catch-up enabled: {not args.no_catchup} (uses Taylor updates)")
     print(f"  Output: {expected_output}")
 
-    # Run experiment
-    if args.single:
-        print("\nRunning single experiment...")
-        results = run_single_experiment(
-            config,
-            baseline=args.baseline,
-        )
-    else:
-        print("\nRunning hierarchy comparison experiment...")
-        results = run_hierarchy_experiment(
-            config=config,
-            baseline=args.baseline,
-            hierarchy_levels=args.levels,
-            create_visualizations=not args.no_visualizations,
-        )
+    print("\nRunning hierarchy comparison experiment...")
+    results = run_hierarchy_experiment(
+        config=config,
+        baseline=args.baseline,
+        hierarchy_levels=args.levels,
+        create_visualizations=not args.no_visualizations,
+    )
 
     print("\n" + "=" * 70)
     print("  Experiment completed!")

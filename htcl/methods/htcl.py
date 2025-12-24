@@ -13,6 +13,8 @@ import torch.nn as nn
 import torch.optim as optim
 import copy
 import random
+import json
+from datetime import datetime
 from itertools import permutations, product
 from typing import List, Tuple, Dict, Optional, Any
 from torch.utils.data import DataLoader, ConcatDataset
@@ -24,6 +26,7 @@ from ..utils import (
     # estimate_diag_hessian_exact,
     estimate_diag_hessian,
 )
+from ..utils.paths import ensure_results_dirs, get_csv_path, get_json_path
 
 
 class HierarchicalModel:
@@ -625,9 +628,28 @@ def train_htcl(
         "Time_s": [r.get("time_seconds", 0.0) for r in results]
     })
 
-    os.makedirs(output_dir, exist_ok=True)
-    csv_path = os.path.join(output_dir, f"htcl_L{num_levels}_results_{dataset}.csv")
+    # Ensure proper directory structure
+    paths = ensure_results_dirs(output_dir)
+
+    # Save CSV to csv/ subdirectory
+    csv_path = os.path.join(paths['csv'], f"htcl_L{num_levels}_results_{dataset}.csv")
     df.to_csv(csv_path, index=False)
+
+    # Save JSON summary to json/ subdirectory
+    json_filename = f"htcl_L{num_levels}_{dataset}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    json_path = os.path.join(paths['json'], json_filename)
+    json_summary = {
+        "method": f"HTCL-L{num_levels}",
+        "dataset": dataset,
+        "num_levels": num_levels,
+        "total_time_seconds": total_elapsed_time,
+        "mean_accuracy": float(df["Mean"].mean()),
+        "std_accuracy": float(df["Mean"].std()),
+        "per_task_mean": [float(df[f"Task{t + 1}"].mean()) for t in range(num_tasks)],
+        "per_task_std": [float(df[f"Task{t + 1}"].std()) for t in range(num_tasks)],
+    }
+    with open(json_path, 'w') as f:
+        json.dump(json_summary, f, indent=2)
 
     if verbose:
         print(f"Saved HTCL results to {csv_path}")

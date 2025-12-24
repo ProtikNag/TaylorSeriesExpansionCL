@@ -22,9 +22,12 @@ import copy
 from typing import List, Tuple, Optional, Dict, Any
 from torch.utils.data import DataLoader
 import pandas as pd
+import json
+from datetime import datetime
 
 from .buffer import ReplayBuffer
 from ..utils import evaluate, evaluate_all_tasks
+from ..utils.paths import ensure_results_dirs
 
 
 def train_der_single_epoch(
@@ -311,10 +314,27 @@ def run_der_experiments(
     })
 
     # Save results
-    os.makedirs(output_dir, exist_ok=True)
-    filename = "derpp" if use_derpp else "der"
-    csv_path = os.path.join(output_dir, f"{filename}_results_{dataset}.csv")
+    # Save results to proper subdirectories
+    paths = ensure_results_dirs(output_dir)
+
+    # Save CSV
+    csv_path = os.path.join(paths['csv'], f"ser_results_{dataset}.csv")
     df.to_csv(csv_path, index=False)
+
+    # Save JSON summary
+    json_filename = f"ser_{dataset}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    json_path = os.path.join(paths['json'], json_filename)
+    json_summary = {
+        "method": "DER",
+        "dataset": dataset,
+        "total_time_seconds": total_elapsed_time,
+        "mean_accuracy": float(df["Mean"].mean()),
+        "std_accuracy": float(df["Mean"].std()),
+        "per_task_mean": [float(df[f"Task{t + 1}"].mean()) for t in range(num_tasks)],
+        "per_task_std": [float(df[f"Task{t + 1}"].std()) for t in range(num_tasks)],
+    }
+    with open(json_path, 'w') as f:
+        json.dump(json_summary, f, indent=2)
 
     if verbose:
         print(f"Saved {method_name} results to {csv_path}")
