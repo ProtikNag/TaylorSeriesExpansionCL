@@ -7,7 +7,7 @@ A modular framework for continual learning research that couples fast local adap
 - **Multi-level hierarchy** for knowledge consolidation across temporal scales
 - **Taylor series-based updates** using second-order approximations
 - **Multiple baseline methods** (ER, SER) with easy extensibility
-- **Taylor-based catch-up mechanism** for global model synchronization
+- **Taylor-based catch-up mechanism** for global model synchronization (keeps best performing model)
 - **Organized output structure** by dataset and baseline method
 - **Publication-quality visualizations** with timing comparisons
 
@@ -43,16 +43,22 @@ Results are automatically organized by dataset and baseline method:
 results/
 ├── splitmnist/
 │   ├── er/
-│   │   ├── er_results_SplitMNIST.csv
-│   │   ├── htcl_L2_results_SplitMNIST.csv
-│   │   ├── htcl_L3_results_SplitMNIST.csv
-│   │   └── plots/
-│   │       ├── png/
-│   │       └── svg/
+│   │   ├── csv/
+│   │   │   ├── er_results_SplitMNIST.csv
+│   │   │   ├── htcl_L2_results_SplitMNIST.csv
+│   │   │   └── htcl_L3_results_SplitMNIST.csv
+│   │   ├── json/
+│   │   │   ├── er_SplitMNIST_20251224_123456.json
+│   │   │   └── htcl_L2_SplitMNIST_20251224_123456.json
+│   │   ├── plots/
+│   │   │   ├── png/
+│   │   │   └── svg/
+│   │   └── checkpoints/
 │   └── ser/
-│       ├── ser_results_SplitMNIST.csv
-│       ├── htcl_L2_results_SplitMNIST.csv
-│       └── plots/
+│       ├── csv/
+│       ├── json/
+│       ├── plots/
+│       └── checkpoints/
 ├── cifar100/
 │   ├── er/
 │   └── ser/
@@ -75,7 +81,7 @@ pip install -r requirements.txt
 python main.py --dataset SplitMNIST --baseline er --levels 2 3 --debug
 
 # Run with SER baseline on CIFAR-100
-python main.py --dataset CIFAR100 --baseline er --levels 2 3 4 --debug
+python main.py --dataset CIFAR100 --baseline ser --levels 2 3 4 --debug
 
 # List available baseline methods
 python main.py --list-baselines
@@ -90,7 +96,7 @@ python main.py --quick-test --baseline er
 # Full experiment on SplitMNIST with SER baseline
 python main.py \
   --dataset SplitMNIST \
-  --baseline er \
+  --baseline ser \
   --levels 2 3 4 5 \
   --epochs 10 \
   --lr 0.01 \
@@ -103,23 +109,24 @@ python main.py \
 
 ## ⚙️ Command Line Options
 
-```
---dataset       Dataset: SplitMNIST, CIFAR100, 20Newsgroups, Cora
---baseline      Baseline method: er, ser (default: er)
---levels        Hierarchy levels to compare (e.g., 2 3 4 5)
---epochs        Training epochs per task
---lr            Learning rate
---batch-size    Batch size
---buffer-size   Replay buffer capacity
---group-size    Tasks per group for permutation search
---num-perms     Number of canonical permutations (default: 20)
---catchup-epochs  Taylor-based catch-up iterations (default: 2)
---no-catchup    Disable catch-up mechanism
---debug         Use smaller dataset for faster testing
---output-dir    Base output directory (default: ./results)
---seed          Random seed for reproducibility
---list-baselines  Show available baseline methods and exit
-```
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--dataset` | Dataset to use: `SplitMNIST`, `CIFAR100`, `20Newsgroups`, `Cora` | `SplitMNIST` |
+| `--baseline` | Baseline method: `er`, `ser` | `er` |
+| `--levels` | Hierarchy levels to compare (e.g., `2 3 4 5`) | `2 3` |
+| `--epochs` | Training epochs per task | `5` |
+| `--lr` | Learning rate | `0.01` |
+| `--batch-size` | Batch size for training | `32` |
+| `--buffer-size` | Replay buffer capacity | `500` |
+| `--group-size` | Tasks per group for permutation search | `2` |
+| `--num-perms` | Number of canonical permutations to evaluate | `20` |
+| `--catchup-epochs` | Taylor-based catch-up iterations | `2` |
+| `--no-catchup` | Disable catch-up mechanism | `False` |
+| `--debug` | Use smaller dataset for faster testing | `False` |
+| `--output-dir` | Base output directory | `./results` |
+| `--seed` | Random seed for reproducibility | `42` |
+| `--list-baselines` | Show available baseline methods and exit | - |
+| `--quick-test` | Run a minimal test to verify setup | - |
 
 ## 🔬 Available Baseline Methods
 
@@ -149,7 +156,7 @@ from htcl import (
 )
 
 # See available baselines
-print(list_baselines())  # ['er', 'er']
+print(list_baselines())  # ['er', 'ser']
 
 # Configure experiment
 config = get_mnist_config(debug=True)
@@ -159,7 +166,7 @@ config.htcl.catchup_epochs = 2
 # Run with SER baseline
 results = run_hierarchy_experiment(
     config=config,
-    baseline="er",                    # Select baseline method
+    baseline="ser",                   # Select baseline method
     hierarchy_levels=[2, 3, 4, 5],
     create_visualizations=True,
 )
@@ -174,7 +181,7 @@ for level, htcl_r in results['htcl_results_by_level'].items():
 
 ### 1. Taylor-Based Global Model Catch-up
 
-The global model uses conservative Taylor updates that can lag on recent tasks. Our catch-up mechanism maintains consistency by using the same Taylor update rule:
+The global model uses conservative Taylor updates that can lag on recent tasks. Our catch-up mechanism maintains consistency by using the same Taylor update rule and automatically keeps the best performing model across iterations:
 
 ```python
 config.htcl.catchup_enabled = True
@@ -201,8 +208,10 @@ All experiments generate publication-quality plots in PNG (300 DPI) and SVG:
 - Hierarchy comparison (bar charts)  
 - Task-order robustness (violin plots)
 - Per-task accuracy trends (line plots)
+- **Taskwise variance** (bar chart and heatmap)
 - **Time comparison** (baseline vs HTCL variants)
 - **Hierarchy time comparison** (by depth)
+- Accuracy heatmaps (all permutations × tasks)
 - Comprehensive 2x2 summary figure
 
 ## 📊 Supported Datasets
