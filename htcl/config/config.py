@@ -17,7 +17,7 @@ import os
 # =============================================================================
 # Change this value to modify samples_per_class for ALL datasets in debug mode.
 # In non-debug mode, the full dataset is used.
-DEBUG_SAMPLES_PER_CLASS: int = 300
+DEBUG_SAMPLES_PER_CLASS: int = 100
 # =============================================================================
 
 
