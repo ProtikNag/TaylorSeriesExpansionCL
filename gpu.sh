@@ -28,7 +28,8 @@ python main.py \
   --batch-size 64 \
   --buffer-size 50 \
   --catchup-epochs 10 \
-  --seed 42
+  --seed 42 \
+  --num-perms 40 
 
 python main.py \
   --dataset SplitMNIST \
@@ -40,7 +41,8 @@ python main.py \
   --batch-size 64 \
   --buffer-size 50 \
   --catchup-epochs 10 \
-  --seed 42
+  --seed 42 \
+  --num-perms 40 
 
 python main.py \
   --dataset SplitMNIST \
@@ -52,4 +54,57 @@ python main.py \
   --batch-size 64 \
   --buffer-size 50 \
   --catchup-epochs 10 \
-  --seed 42
+  --seed 42 \
+  --num-perms 40
+
+python main.py \
+  --dataset SplitMNIST \
+  --baseline dualnet \
+  --levels 2 3 4 5 \
+  --debug \
+  --epochs 10 \
+  --lr 0.01 \
+  --batch-size 64 \
+  --buffer-size 50 \
+  --catchup-epochs 10 \
+  --seed 42 \
+  --num-perms 40
+
+python main.py \
+  --dataset SplitMNIST \
+  --baseline spectral \
+  --levels 2 3 4 5 \
+  --debug \
+  --epochs 10 \
+  --lr 0.01 \
+  --batch-size 64 \
+  --buffer-size 50 \
+  --catchup-epochs 10 \
+  --seed 42 \
+  --num-perms 40
+
+python main.py \
+  --dataset CIFAR100 \
+  --baseline ser \
+  --levels 2 3 4 5 \
+  --debug \
+  --epochs 10 \
+  --lr 0.01 \
+  --batch-size 64 \
+  --buffer-size 500 \
+  --catchup-epochs 10 \
+  --seed 42 \
+  --num-perms 40 
+
+python main.py \
+  --dataset CIFAR100 \
+  --baseline er \
+  --levels 2 3 4 5 \
+  --debug \
+  --epochs 10 \
+  --lr 0.01 \
+  --batch-size 64 \
+  --buffer-size 500 \
+  --catchup-epochs 10 \
+  --seed 42 \
+  --num-perms 40
