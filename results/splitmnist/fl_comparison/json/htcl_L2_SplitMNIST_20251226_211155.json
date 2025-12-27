@@ -1,0 +1,22 @@
+{
+  "method": "HTCL-L2",
+  "dataset": "SplitMNIST",
+  "num_levels": 2,
+  "total_time_seconds": 80.59955596923828,
+  "mean_accuracy": 50.0,
+  "std_accuracy": 0.0,
+  "per_task_mean": [
+    50.0,
+    50.0,
+    50.0,
+    50.0,
+    50.0
+  ],
+  "per_task_std": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

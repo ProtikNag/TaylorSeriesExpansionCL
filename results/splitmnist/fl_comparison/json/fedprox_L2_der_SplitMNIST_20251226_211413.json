@@ -1,0 +1,24 @@
+{
+  "method": "FedProx-L2+DER",
+  "dataset": "SplitMNIST",
+  "num_levels": 2,
+  "alpha": 0.5,
+  "mu": 0.01,
+  "total_time_seconds": 69.81912994384766,
+  "mean_accuracy": 50.0,
+  "std_accuracy": 0.0,
+  "per_task_mean": [
+    50.0,
+    50.0,
+    33.333333333333336,
+    50.0,
+    66.66666666666667
+  ],
+  "per_task_std": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ]
+}

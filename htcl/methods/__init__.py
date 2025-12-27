@@ -37,6 +37,21 @@ from .spectral_reg import (
     train_spectral_model,
     run_spectral_experiments
 )
+from .fedavg import (
+    fedavg_update,
+    FedAvgHierarchy,
+    train_fedavg,
+    run_fedavg_ser_experiments,
+    run_fedavg_der_experiments,
+)
+from .fedprox import (
+    fedprox_update,
+    FedProxHierarchy,
+    proximal_loss,
+    train_fedprox,
+    run_fedprox_ser_experiments,
+    run_fedprox_der_experiments,
+)
 
 # Registry of available baseline methods
 BASELINE_REGISTRY = {

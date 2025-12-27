@@ -1,0 +1,562 @@
+{
+  "experiment_name": "fl_comparison_SplitMNIST",
+  "config": {
+    "data": {
+      "name": "SplitMNIST",
+      "data_dir": "./data",
+      "num_tasks": 5,
+      "batch_size": 64,
+      "seed": 42,
+      "debug": true,
+      "samples_per_class": 3
+    },
+    "model": {
+      "num_classes_per_task": 2,
+      "freeze_backbone": false,
+      "hidden_dim": 128,
+      "dropout": 0.5
+    },
+    "training": {
+      "num_epochs": 10,
+      "learning_rate": 0.01,
+      "momentum": 0.9,
+      "weight_decay": 0.0,
+      "device": "cuda"
+    },
+    "htcl": {
+      "num_levels": 2,
+      "group_size": 2,
+      "buffer_size": 50,
+      "buffer_beta": 0.5,
+      "eta": 1.0,
+      "max_norm": 1.0,
+      "lambda_reg": 1000.0,
+      "catchup_enabled": true,
+      "catchup_epochs": 10,
+      "catchup_lr_factor": 0.1,
+      "num_permutations": 2
+    },
+    "experiment_name": "mnist_L2",
+    "output_dir": "./results",
+    "save_models": true,
+    "verbose": true
+  },
+  "timestamp": "2025-12-26T21:14:13.267208",
+  "baselines": [
+    "ser",
+    "der"
+  ],
+  "hierarchy_levels": 2,
+  "all_results": {
+    "ser_baseline": {
+      "method": "SER",
+      "dataset": "SplitMNIST",
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            83.33333333333333,
+            66.66666666666667,
+            33.333333333333336,
+            16.666666666666668,
+            83.33333333333333
+          ],
+          "mean_acc": 56.666666666666664,
+          "time_seconds": 103.24492001533508
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            66.66666666666667,
+            66.66666666666667,
+            16.666666666666668,
+            16.666666666666668,
+            83.33333333333333
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 105.51904726028442
+        }
+      ],
+      "total_time_seconds": 208.76404905319214,
+      "summary": {
+        "mean_accuracy": 53.33333333333333,
+        "std_accuracy": 4.714045207910315,
+        "per_task_mean": [
+          75.0,
+          66.66666666666667,
+          25.0,
+          16.666666666666668,
+          83.33333333333333
+        ],
+        "per_task_std": [
+          11.785113019775785,
+          0.0,
+          11.785113019775793,
+          0.0,
+          0.0
+        ],
+        "total_time": 208.76404905319214,
+        "avg_time_per_perm": 104.38202452659607
+      }
+    },
+    "ser_htcl": {
+      "method": "HTCL-L2",
+      "dataset": "SplitMNIST",
+      "num_levels": 2,
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            66.66666666666667,
+            66.66666666666667,
+            33.333333333333336,
+            50.0,
+            33.333333333333336
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 80.71808791160583
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            66.66666666666667,
+            66.66666666666667,
+            33.333333333333336,
+            50.0,
+            33.333333333333336
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 80.71808791160583
+        }
+      ],
+      "total_time_seconds": 80.7181749343872,
+      "summary": {
+        "mean_accuracy": 50.0,
+        "std_accuracy": 0.0,
+        "per_task_mean": [
+          66.66666666666667,
+          66.66666666666667,
+          33.333333333333336,
+          50.0,
+          33.333333333333336
+        ],
+        "per_task_std": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "total_time": 80.7181749343872,
+        "avg_time_per_perm": 80.7181749343872
+      }
+    },
+    "ser_fedavg": {
+      "method": "FedAvg-L2+SER",
+      "dataset": "SplitMNIST",
+      "num_levels": 2,
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            33.333333333333336
+          ],
+          "mean_acc": 46.66666666666667,
+          "time_seconds": 68.75037217140198
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            33.333333333333336
+          ],
+          "mean_acc": 46.66666666666667,
+          "time_seconds": 68.75037217140198
+        }
+      ],
+      "total_time_seconds": 68.75044512748718,
+      "summary": {
+        "mean_accuracy": 46.66666666666667,
+        "std_accuracy": 0.0,
+        "per_task_mean": [
+          50.0,
+          50.0,
+          50.0,
+          50.0,
+          33.333333333333336
+        ],
+        "per_task_std": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "total_time": 68.75044512748718,
+        "avg_time_per_perm": 68.75044512748718
+      }
+    },
+    "ser_fedprox": {
+      "method": "FedProx-L2+SER",
+      "dataset": "SplitMNIST",
+      "num_levels": 2,
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 71.10938096046448
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 71.10938096046448
+        }
+      ],
+      "total_time_seconds": 71.1094479560852,
+      "summary": {
+        "mean_accuracy": 50.0,
+        "std_accuracy": 0.0,
+        "per_task_mean": [
+          50.0,
+          50.0,
+          50.0,
+          50.0,
+          50.0
+        ],
+        "per_task_std": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "total_time": 71.1094479560852,
+        "avg_time_per_perm": 71.1094479560852
+      }
+    },
+    "der_baseline": {
+      "method": "DER",
+      "dataset": "SplitMNIST",
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 108.50103878974915
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            33.333333333333336,
+            50.0,
+            33.333333333333336,
+            66.66666666666667,
+            66.66666666666667
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 107.37768697738647
+        }
+      ],
+      "total_time_seconds": 215.87881898880005,
+      "summary": {
+        "mean_accuracy": 50.0,
+        "std_accuracy": 0.0,
+        "per_task_mean": [
+          41.66666666666667,
+          50.0,
+          41.66666666666667,
+          58.333333333333336,
+          58.333333333333336
+        ],
+        "per_task_std": [
+          11.78511301977579,
+          0.0,
+          11.78511301977579,
+          11.785113019775796,
+          11.785113019775796
+        ],
+        "total_time": 215.87881898880005,
+        "avg_time_per_perm": 107.93940949440002
+      }
+    },
+    "der_htcl": {
+      "method": "HTCL-L2",
+      "dataset": "SplitMNIST",
+      "num_levels": 2,
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 80.59948086738586
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 80.59948086738586
+        }
+      ],
+      "total_time_seconds": 80.59955596923828,
+      "summary": {
+        "mean_accuracy": 50.0,
+        "std_accuracy": 0.0,
+        "per_task_mean": [
+          50.0,
+          50.0,
+          50.0,
+          50.0,
+          50.0
+        ],
+        "per_task_std": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "total_time": 80.59955596923828,
+        "avg_time_per_perm": 80.59955596923828
+      }
+    },
+    "der_fedavg": {
+      "method": "FedAvg-L2+DER",
+      "dataset": "SplitMNIST",
+      "num_levels": 2,
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 68.3242039680481
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            50.0,
+            50.0,
+            50.0
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 68.3242039680481
+        }
+      ],
+      "total_time_seconds": 68.32427597045898,
+      "summary": {
+        "mean_accuracy": 50.0,
+        "std_accuracy": 0.0,
+        "per_task_mean": [
+          50.0,
+          50.0,
+          50.0,
+          50.0,
+          50.0
+        ],
+        "per_task_std": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "total_time": 68.32427597045898,
+        "avg_time_per_perm": 68.32427597045898
+      }
+    },
+    "der_fedprox": {
+      "method": "FedProx-L2+DER",
+      "dataset": "SplitMNIST",
+      "num_levels": 2,
+      "results": [
+        {
+          "sequence": [
+            0,
+            4,
+            2,
+            1,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            33.333333333333336,
+            50.0,
+            66.66666666666667
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 69.81903719902039
+        },
+        {
+          "sequence": [
+            0,
+            4,
+            1,
+            2,
+            3
+          ],
+          "accuracies": [
+            50.0,
+            50.0,
+            33.333333333333336,
+            50.0,
+            66.66666666666667
+          ],
+          "mean_acc": 50.0,
+          "time_seconds": 69.81903719902039
+        }
+      ],
+      "total_time_seconds": 69.81912994384766,
+      "summary": {
+        "mean_accuracy": 50.0,
+        "std_accuracy": 0.0,
+        "per_task_mean": [
+          50.0,
+          50.0,
+          33.333333333333336,
+          50.0,
+          66.66666666666667
+        ],
+        "per_task_std": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "total_time": 69.81912994384766,
+        "avg_time_per_perm": 69.81912994384766
+      }
+    }
+  }
+}
