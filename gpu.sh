@@ -11,6 +11,7 @@ hostname
 date
 
 export CUDA_VISIBLE_DEVICES=0
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 module load cuda/12.3
 module load python3/anaconda/2023.9
@@ -37,7 +38,7 @@ python run_fl_experiment.py \
   --buffer-size 50 \
   --catchup-epochs 10 \
   --seed 42 \
-  --num-perms 40
+  --num-perms 60
 
 echo "=============================================="
 echo "FL Comparison Experiment Completed!"

@@ -28,6 +28,14 @@ from ..utils import (
 )
 from ..utils.paths import ensure_results_dirs, get_csv_path, get_json_path
 
+import gc
+
+def clear_memory():
+    """Clear GPU memory."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
+
 
 class HierarchicalModel:
     """
@@ -371,8 +379,14 @@ def select_best_permutation(
 
         if avg_acc > best_acc:
             best_acc = avg_acc
+            if best_model is not None:
+                del best_model
             best_model = copy.deepcopy(trained)
             best_perm = perm
+
+        # Clean up
+        del trained
+        clear_memory()
 
     if best_model is None:
         best_model = copy.deepcopy(base_model).to(device)

@@ -13,6 +13,9 @@ import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
+import torch
+import gc
+
 from ..config import ExperimentConfig
 from ..data import get_dataset
 from ..models import get_model
@@ -28,15 +31,22 @@ from ..utils import set_seed, get_device, ResultsManager
 from .fl_plots import create_fl_comparison_visualizations
 
 
+def clear_gpu_memory():
+    """Clear GPU memory cache."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        gc.collect()
+
+
 def get_output_dir(base_dir: str, dataset: str, experiment_type: str = "fl_comparison") -> str:
     """
     Generate organized output directory path.
-    
+
     Args:
         base_dir: Base results directory
         dataset: Dataset name
         experiment_type: Type of experiment
-    
+
     Returns:
         Path like "./results/splitmnist/fl_comparison/"
     """
@@ -55,23 +65,23 @@ def run_fl_comparison_experiment(
 ) -> Dict[str, Any]:
     """
     Run experiments comparing HTCL vs FedAvg vs FedProx consolidation methods.
-    
+
     Args:
         config: Experiment configuration
         baselines: Base CL methods to use ("ser", "der")
         hierarchy_levels: Number of hierarchy levels
         save_results: Whether to save results
         create_visualizations: Whether to create plots
-    
+
     Returns:
         Complete results dictionary
     """
     set_seed(config.data.seed)
     device = get_device() if config.training.device == "cuda" else config.training.device
-    
+
     # Get organized output directory
     output_dir = get_output_dir(config.output_dir, config.data.name, "fl_comparison")
-    
+
     print(f"\n{'=' * 70}")
     print(f"FL Comparison Experiment: HTCL vs FedAvg vs FedProx")
     print(f"Dataset: {config.data.name}")
@@ -79,7 +89,7 @@ def run_fl_comparison_experiment(
     print(f"Hierarchy levels: {hierarchy_levels}")
     print(f"Output: {output_dir}")
     print(f"{'=' * 70}\n")
-    
+
     # Load dataset
     print("Loading dataset...")
     dataset = get_dataset(
@@ -92,41 +102,41 @@ def run_fl_comparison_experiment(
         samples_per_class=config.data.samples_per_class,
     )
     train_loaders, test_loaders = dataset.get_task_loaders()
-    
+
     # Create model
     print("Creating model...")
     model = get_model(
         dataset=config.data.name,
         num_classes=config.model.num_classes_per_task,
     )
-    
+
     # Generate canonical permutations
     num_tasks = len(train_loaders)
     max_perms = config.htcl.num_permutations if config.htcl.num_permutations else 20
-    
+
     perms = generate_canonical_permutations(
         num_tasks=num_tasks,
         group_size=config.htcl.group_size,
         max_perms=max_perms,
         seed=config.data.seed,
     )
-    
+
     print(f"Using {len(perms)} canonical permutations (group_size={config.htcl.group_size})")
-    
+
     # Store all results
     all_results = {}
-    
+
     for baseline in baselines:
         baseline_upper = baseline.upper()
         print(f"\n{'=' * 60}")
         print(f"Running experiments with {baseline_upper} as base method")
         print(f"{'=' * 60}")
-        
+
         # 1. Run baseline alone (SER or DER)
         print(f"\n{'-' * 50}")
         print(f"Running {baseline_upper} baseline...")
         print(f"{'-' * 50}")
-        
+
         if baseline == "ser":
             baseline_results = run_ser_experiments(
                 model=model,
@@ -155,14 +165,23 @@ def run_fl_comparison_experiment(
                 output_dir=output_dir,
                 verbose=config.verbose,
             )
-        
+
         all_results[f"{baseline}_baseline"] = baseline_results
-        
+
+        # Clear GPU memory before next experiment
+        clear_gpu_memory()
+
         # 2. Run HTCL
         print(f"\n{'-' * 50}")
         print(f"Running {baseline_upper} + HTCL-L{hierarchy_levels}...")
         print(f"{'-' * 50}")
-        
+
+        # Re-create model to ensure fresh start
+        model = get_model(
+            dataset=config.data.name,
+            num_classes=config.model.num_classes_per_task,
+        )
+
         htcl_results = train_htcl(
             model=model,
             train_loaders=train_loaders,
@@ -180,14 +199,23 @@ def run_fl_comparison_experiment(
             catchup_epochs=config.htcl.catchup_epochs,
             verbose=config.verbose,
         )
-        
+
         all_results[f"{baseline}_htcl"] = htcl_results
-        
+
+        # Clear GPU memory
+        clear_gpu_memory()
+
         # 3. Run FedAvg
         print(f"\n{'-' * 50}")
         print(f"Running {baseline_upper} + FedAvg-L{hierarchy_levels}...")
         print(f"{'-' * 50}")
-        
+
+        # Re-create model to ensure fresh start
+        model = get_model(
+            dataset=config.data.name,
+            num_classes=config.model.num_classes_per_task,
+        )
+
         fedavg_results = train_fedavg(
             model=model,
             train_loaders=train_loaders,
@@ -205,14 +233,23 @@ def run_fl_comparison_experiment(
             base_method=baseline,
             verbose=config.verbose,
         )
-        
+
         all_results[f"{baseline}_fedavg"] = fedavg_results
-        
+
+        # Clear GPU memory
+        clear_gpu_memory()
+
         # 4. Run FedProx
         print(f"\n{'-' * 50}")
         print(f"Running {baseline_upper} + FedProx-L{hierarchy_levels}...")
         print(f"{'-' * 50}")
-        
+
+        # Re-create model to ensure fresh start
+        model = get_model(
+            dataset=config.data.name,
+            num_classes=config.model.num_classes_per_task,
+        )
+
         fedprox_results = train_fedprox(
             model=model,
             train_loaders=train_loaders,
@@ -231,9 +268,12 @@ def run_fl_comparison_experiment(
             base_method=baseline,
             verbose=config.verbose,
         )
-        
+
         all_results[f"{baseline}_fedprox"] = fedprox_results
-    
+
+        # Clear GPU memory before next baseline
+        clear_gpu_memory()
+
     # Compile results
     results = {
         "experiment_name": f"fl_comparison_{config.data.name}",
@@ -243,7 +283,7 @@ def run_fl_comparison_experiment(
         "hierarchy_levels": hierarchy_levels,
         "all_results": all_results,
     }
-    
+
     # Save results
     if save_results:
         results_manager = ResultsManager(output_dir)
@@ -251,7 +291,7 @@ def run_fl_comparison_experiment(
             results, f"fl_comparison_{config.data.name}"
         )
         print(f"\nResults saved to: {results_path}")
-    
+
     # Create visualizations
     if create_visualizations:
         print("\nCreating visualizations...")
@@ -262,10 +302,10 @@ def run_fl_comparison_experiment(
             output_dir=output_dir,
             show=False,
         )
-    
+
     # Print summary
     print_fl_comparison_summary(all_results, baselines)
-    
+
     return results
 
 
@@ -274,21 +314,21 @@ def print_fl_comparison_summary(all_results: Dict[str, Any], baselines: List[str
     print("\n" + "=" * 80)
     print("FL COMPARISON SUMMARY")
     print("=" * 80)
-    
+
     for baseline in baselines:
         baseline_upper = baseline.upper()
         print(f"\n{baseline_upper} Base Method:")
         print("-" * 60)
         print(f"{'Method':<25} {'Mean Acc (%)':<15} {'Std (%)':<12} {'Time (s)':<10}")
         print("-" * 60)
-        
+
         methods = [
             (f"{baseline}_baseline", f"{baseline_upper} (Baseline)"),
             (f"{baseline}_htcl", f"{baseline_upper} + HTCL"),
             (f"{baseline}_fedavg", f"{baseline_upper} + FedAvg"),
             (f"{baseline}_fedprox", f"{baseline_upper} + FedProx"),
         ]
-        
+
         for key, name in methods:
             if key in all_results:
                 r = all_results[key]
@@ -296,7 +336,7 @@ def print_fl_comparison_summary(all_results: Dict[str, Any], baselines: List[str
                 std_acc = r['summary']['std_accuracy']
                 total_time = r.get('total_time_seconds', 0)
                 print(f"{name:<25} {mean_acc:<15.2f} {std_acc:<12.2f} {total_time:<10.1f}")
-    
+
     print("=" * 80)
 
 
@@ -305,14 +345,14 @@ def main():
     import argparse
     import sys
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    
+
     from htcl import get_mnist_config, get_cifar100_config
-    
+
     parser = argparse.ArgumentParser(
         description="FL Comparison: HTCL vs FedAvg vs FedProx",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    
+
     parser.add_argument(
         "--dataset", type=str, default="SplitMNIST",
         choices=["SplitMNIST", "CIFAR100"],
@@ -334,15 +374,15 @@ def main():
     parser.add_argument("--output-dir", type=str, default="./results", help="Output directory")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--no-visualizations", action="store_true", help="Skip visualizations")
-    
+
     args = parser.parse_args()
-    
+
     # Get config
     if args.dataset == "SplitMNIST":
         config = get_mnist_config(debug=args.debug)
     else:
         config = get_cifar100_config(debug=args.debug)
-    
+
     # Override config with CLI args
     config.training.num_epochs = args.epochs
     config.training.learning_rate = args.lr
@@ -352,7 +392,7 @@ def main():
     config.htcl.catchup_epochs = args.catchup_epochs
     config.output_dir = args.output_dir
     config.data.seed = args.seed
-    
+
     # Run experiment
     results = run_fl_comparison_experiment(
         config=config,
@@ -360,7 +400,7 @@ def main():
         hierarchy_levels=args.levels,
         create_visualizations=not args.no_visualizations,
     )
-    
+
     print(f"\nExperiment completed!")
     print(f"Results saved to: {get_output_dir(args.output_dir, args.dataset, 'fl_comparison')}")
 
