@@ -6,7 +6,7 @@ A modular framework for continual learning research that couples fast local adap
 
 - **Multi-level hierarchy** for knowledge consolidation across temporal scales
 - **Taylor series-based updates** using second-order approximations
-- **Multiple baseline methods** (ER, SER) with easy extensibility
+- **Multiple baseline methods** (ER, SER, DER, EWC, iCaRL) with easy extensibility
 - **Taylor-based catch-up mechanism** for global model synchronization (keeps best performing model)
 - **Organized output structure** by dataset and baseline method
 - **Publication-quality visualizations** with timing comparisons
@@ -29,6 +29,9 @@ TaylorSeriesExpansionCL/
     │   ├── buffer.py       # Replay buffer
     │   ├── er.py           # Experience Replay baseline
     │   ├── ser.py          # Strong Experience Replay baseline
+    │   ├── der.py          # Dark Experience Replay baseline
+    │   ├── ewc.py          # Elastic Weight Consolidation baseline
+    │   ├── icarl.py        # iCaRL baseline
     │   └── htcl.py         # HTCL implementation
     ├── utils/              # Helper functions
     ├── visualization/      # Plotting functions
@@ -45,23 +48,23 @@ results/
 │   ├── er/
 │   │   ├── csv/
 │   │   │   ├── er_results_SplitMNIST.csv
-│   │   │   ├── htcl_L2_results_SplitMNIST.csv
-│   │   │   └── htcl_L3_results_SplitMNIST.csv
+│   │   │   ├── htcl_er_L2_results_SplitMNIST.csv
+│   │   │   └── htcl_er_L3_results_SplitMNIST.csv
 │   │   ├── json/
-│   │   │   ├── er_SplitMNIST_20251224_123456.json
-│   │   │   └── htcl_L2_SplitMNIST_20251224_123456.json
 │   │   ├── plots/
 │   │   │   ├── png/
 │   │   │   └── svg/
 │   │   └── checkpoints/
-│   └── ser/
-│       ├── csv/
-│       ├── json/
-│       ├── plots/
-│       └── checkpoints/
+│   ├── ser/
+│   ├── der/
+│   ├── ewc/
+│   └── icarl/
 ├── cifar100/
 │   ├── er/
-│   └── ser/
+│   ├── ser/
+│   ├── der/
+│   ├── ewc/
+│   └── icarl/
 └── ...
 ```
 
@@ -82,6 +85,12 @@ python main.py --dataset SplitMNIST --baseline er --levels 2 3 --debug
 
 # Run with SER baseline on CIFAR-100
 python main.py --dataset CIFAR100 --baseline ser --levels 2 3 4 --debug
+
+# Run with EWC baseline on SplitMNIST
+python main.py --dataset SplitMNIST --baseline ewc --levels 2 3 --debug
+
+# Run with iCaRL baseline on SplitMNIST
+python main.py --dataset SplitMNIST --baseline icarl --levels 2 3 --debug
 
 # List available baseline methods
 python main.py --list-baselines
@@ -112,7 +121,7 @@ python main.py \
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--dataset` | Dataset to use: `SplitMNIST`, `CIFAR100`, `20Newsgroups`, `Cora` | `SplitMNIST` |
-| `--baseline` | Baseline method: `er`, `ser` | `er` |
+| `--baseline` | Baseline method: `er`, `ser`, `der`, `ewc`, `icarl` | `er` |
 | `--levels` | Hierarchy levels to compare (e.g., `2 3 4 5`) | `2 3` |
 | `--epochs` | Training epochs per task | `5` |
 | `--lr` | Learning rate | `0.01` |
@@ -146,6 +155,41 @@ Enhanced replay with knowledge distillation from stored logits:
 python main.py --baseline ser --dataset SplitMNIST --levels 2 3
 ```
 
+### Dark Experience Replay (DER)
+Stores and matches network logits throughout the optimization trajectory:
+- MSE loss on stored logits
+- Captures "dark knowledge" from training dynamics
+
+Reference: Buzzega et al., "Dark Experience for General Continual Learning", NeurIPS 2020
+
+```bash
+python main.py --baseline der --dataset SplitMNIST --levels 2 3
+```
+
+### Elastic Weight Consolidation (EWC)
+Regularization-based method using Fisher Information:
+- Penalizes changes to important parameters
+- Uses diagonal Fisher Information Matrix approximation
+- L_total = L_current + (λ/2) * Σ F_i * (θ_i - θ*_i)²
+
+Reference: Kirkpatrick et al., "Overcoming catastrophic forgetting in neural networks", PNAS 2017
+
+```bash
+python main.py --baseline ewc --dataset SplitMNIST --levels 2 3
+```
+
+### iCaRL (Incremental Classifier and Representation Learning)
+Exemplar-based method with herding selection and distillation:
+- Nearest-mean-of-exemplars classification
+- Herding-based exemplar selection
+- Knowledge distillation from previous model
+
+Reference: Rebuffi et al., "iCaRL: Incremental Classifier and Representation Learning", CVPR 2017
+
+```bash
+python main.py --baseline icarl --dataset SplitMNIST --levels 2 3
+```
+
 ## 🐍 Python API
 
 ```python
@@ -156,7 +200,7 @@ from htcl import (
 )
 
 # See available baselines
-print(list_baselines())  # ['er', 'ser']
+print(list_baselines())  # ['er', 'ser', 'der', 'ewc', 'icarl']
 
 # Configure experiment
 config = get_mnist_config(debug=True)
@@ -195,7 +239,7 @@ Compare different hierarchy depths to find the optimal configuration:
 ```python
 results = run_hierarchy_experiment(
     config=config,
-    baseline="er",
+    baseline="ewc",  # Can use any baseline
     hierarchy_levels=[2, 3, 4, 5],  # Test 2 to 5 levels
 )
 ```
@@ -223,8 +267,7 @@ All experiments generate publication-quality plots in PNG (300 DPI) and SVG:
 | 20Newsgroups | 5 | 4 | Text |
 | Cora | 3 | ~3 | Graph |
 
-
-## 🐛 Troubleshooting
+## 🛠 Troubleshooting
 
 ### Import errors
 ```bash

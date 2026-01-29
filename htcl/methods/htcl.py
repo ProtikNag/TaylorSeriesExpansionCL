@@ -6,6 +6,7 @@ This module implements the multi-level hierarchy with:
 - Second-order Taylor series global consolidation
 - Global model catch-up mechanism for recent tasks
 - Configurable L-level hierarchy
+- Configurable baseline method (ER, SER, DER, EWC, iCaRL)
 """
 
 import torch
@@ -16,17 +17,68 @@ import random
 import json
 from datetime import datetime
 from itertools import permutations, product
-from typing import List, Tuple, Dict, Optional, Any
+from typing import List, Tuple, Dict, Optional, Any, Callable
 from torch.utils.data import DataLoader, ConcatDataset
 
 from .er import train_er_model
+from .ser import train_ser_model
+from .der import train_der_model
+from .ewc import train_ewc_model
+from .icarl import train_icarl_model
 from ..utils import (
     evaluate,
     evaluate_all_tasks,
-    # estimate_diag_hessian_exact,
     estimate_diag_hessian,
 )
 from ..utils.paths import ensure_results_dirs, get_csv_path, get_json_path
+
+import gc
+
+
+# Registry of baseline training functions
+# Each function should have signature:
+#   train_fn(base_model, task_perm, train_loaders, num_epochs, lr, device, buffer_size, **kwargs) -> model
+BASELINE_TRAIN_REGISTRY: Dict[str, Callable] = {
+    "er": train_er_model,
+    "ser": train_ser_model,
+    "der": train_der_model,
+    "ewc": train_ewc_model,
+    "icarl": train_icarl_model,
+}
+
+
+def get_baseline_train_fn(baseline: str) -> Callable:
+    """
+    Get the training function for a given baseline method.
+    
+    Args:
+        baseline: Name of the baseline method (er, ser, der, ewc, icarl)
+    
+    Returns:
+        Training function
+    
+    Raises:
+        ValueError: If baseline is not recognized
+    """
+    baseline_lower = baseline.lower()
+    if baseline_lower not in BASELINE_TRAIN_REGISTRY:
+        available = list(BASELINE_TRAIN_REGISTRY.keys())
+        raise ValueError(
+            f"Unknown baseline '{baseline}'. Available baselines: {available}"
+        )
+    return BASELINE_TRAIN_REGISTRY[baseline_lower]
+
+
+def list_available_baselines() -> List[str]:
+    """Return list of available baseline methods."""
+    return list(BASELINE_TRAIN_REGISTRY.keys())
+
+
+def clear_memory():
+    """Clear GPU memory."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
 
 
 class HierarchicalModel:
@@ -337,6 +389,7 @@ def select_best_permutation(
         lr: float,
         device: str,
         buffer_size: int,
+        baseline: str = "er",
 ) -> Tuple[nn.Module, Tuple[int, ...]]:
     """
     Find the best task ordering within a group by exhaustive search.
@@ -349,6 +402,7 @@ def select_best_permutation(
         lr: Learning rate
         device: Device
         buffer_size: Replay buffer size
+        baseline: Baseline method to use (er, ser, der, ewc, icarl)
     
     Returns:
         (best_model, best_permutation)
@@ -357,10 +411,13 @@ def select_best_permutation(
     best_acc = -float('inf')
     best_model = None
     best_perm = None
+    
+    # Get the appropriate training function for this baseline
+    train_fn = get_baseline_train_fn(baseline)
 
     for perm in permutations(range(k)):
-        # Train on this permutation
-        trained = train_er_model(
+        # Train on this permutation using the selected baseline
+        trained = train_fn(
             base_model, perm, train_loaders,
             num_epochs, lr, device, buffer_size
         )
@@ -371,8 +428,14 @@ def select_best_permutation(
 
         if avg_acc > best_acc:
             best_acc = avg_acc
+            if best_model is not None:
+                del best_model
             best_model = copy.deepcopy(trained)
             best_perm = perm
+
+        # Clean up
+        del trained
+        clear_memory()
 
     if best_model is None:
         best_model = copy.deepcopy(base_model).to(device)
@@ -469,6 +532,7 @@ def train_htcl(
         device: str = "cuda",
         dataset: str = "Unknown",
         output_dir: str = "./results",
+        baseline: str = "er",
         catchup_enabled: bool = True,
         catchup_epochs: int = 2,
         catchup_lr_factor: float = 0.1,
@@ -492,6 +556,7 @@ def train_htcl(
         device: Device
         dataset: Dataset name
         output_dir: Output directory
+        baseline: Baseline CL method to use (er, ser, der, ewc, icarl)
         catchup_enabled: Enable global model catch-up
         catchup_epochs: Catch-up training epochs
         catchup_lr_factor: LR multiplier for catch-up
@@ -506,6 +571,12 @@ def train_htcl(
     import os
     import time
 
+    # Validate baseline
+    baseline_lower = baseline.lower()
+    if baseline_lower not in BASELINE_TRAIN_REGISTRY:
+        available = list(BASELINE_TRAIN_REGISTRY.keys())
+        raise ValueError(f"Unknown baseline '{baseline}'. Available: {available}")
+
     total_start_time = time.time()
     num_tasks = len(train_loaders)
 
@@ -516,6 +587,7 @@ def train_htcl(
     if verbose:
         print(f"\n{'=' * 60}")
         print(f"Running HTCL experiments on {dataset}")
+        print(f"  Baseline method: {baseline_lower.upper()}")
         print(f"  {len(perms)} permutations, {num_tasks} tasks")
         print(f"  {num_levels} hierarchy levels, group_size={group_size}")
         print(f"  catchup_enabled={catchup_enabled}, catchup_epochs={catchup_epochs}")
@@ -579,11 +651,12 @@ def train_htcl(
                 )
                 group_train_with_replay.append(new_loader)
 
-            # Find best permutation within group
+            # Find best permutation within group using the selected baseline
             local_base = copy.deepcopy(hierarchy.global_model).to(device)
             local_trained, best_local_perm = select_best_permutation(
                 local_base, group_train_with_replay, group_test,
-                num_epochs, lr, device, buffer_size
+                num_epochs, lr, device, buffer_size,
+                baseline=baseline_lower
             )
 
             # Set local model
@@ -667,14 +740,18 @@ def train_htcl(
     paths = ensure_results_dirs(output_dir)
 
     # Save CSV to csv/ subdirectory
-    csv_path = os.path.join(paths['csv'], f"htcl_L{num_levels}_results_{dataset}.csv")
+    csv_path = os.path.join(
+        paths['csv'], 
+        f"htcl_{baseline_lower}_L{num_levels}_results_{dataset}.csv"
+    )
     df.to_csv(csv_path, index=False)
 
     # Save JSON summary to json/ subdirectory
-    json_filename = f"htcl_L{num_levels}_{dataset}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    json_filename = f"htcl_{baseline_lower}_L{num_levels}_{dataset}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     json_path = os.path.join(paths['json'], json_filename)
     json_summary = {
         "method": f"HTCL-L{num_levels}",
+        "baseline": baseline_lower,
         "dataset": dataset,
         "num_levels": num_levels,
         "total_time_seconds": total_elapsed_time,
@@ -692,6 +769,7 @@ def train_htcl(
 
     return {
         "method": f"HTCL-L{num_levels}",
+        "baseline": baseline_lower,
         "dataset": dataset,
         "num_levels": num_levels,
         "results": results,
