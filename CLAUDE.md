@@ -48,6 +48,12 @@ anonymous release copy before submission, and `scripts/check_anonymity.sh` skips
     results.
   - A diverged job fails loudly and does not write chance-level metrics.
 - **Reduced-data runs** (`--samples-per-class`) validate code paths. They are never paper numbers.
+- **Where things run.**
+  - All training runs happen on the cluster; the laptop freezes under them.
+  - The cluster session never makes figures or other visualizations, because its terminal cannot show
+    them. It pushes numbers to the `cluster/results` branch (`docs/HANDOFF.md`, "Reporting back").
+  - The laptop session pulls those numbers, draws the figures, and checks them in the paper.
+  - Results compared in one figure or table come from the same device.
 - **Before running anything large**, show the user the list of experiments and variations first.
 - Never change a config's hyperparameters silently. Report the problem and propose the change.
 

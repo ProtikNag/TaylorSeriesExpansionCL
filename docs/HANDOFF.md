@@ -16,12 +16,15 @@ cluster). Read `CLAUDE.md` (project rules), this file, `README.md`, `docs/DESIGN
     the best *validation* accuracy is kept (ties go to the arrival order).
   - The old group schedule is the `schedule: group` ablation. Catch-up is not part of the algorithm.
 - **Tests and smoke:** `pytest -q tests/` passes, and every config passes a CPU/MPS smoke run.
-- **Storyline (intro Fig. 1)** runs on the laptop (MPS):
-  - Configuration: SplitMNIST, 5 tasks of 2 digits, 500 samples per class, 5 task orders, six methods.
-  - Result: final accuracy moves by 5 to 23 points between orders.
-  - Figure: `figures/storyline.py` writes `report/figures/storyline/storyline.*` (methods alone) and
-    `storyline_htcl.*` (each method beside its HTCL variant).
-  - The HTCL storyline runs are in progress on the laptop.
+- **Storyline (intro Fig. 1):**
+  - Configuration: SplitMNIST, 5 tasks of 2 digits, 500 samples per class, 5 task orders, six methods,
+    each alone and with HTCL (60 jobs, `configs/storyline.yaml`).
+  - Laptop result for the methods alone: final accuracy moves by 5 to 23 points between orders.
+  - The laptop freezes under these runs, so **all runs move to the cluster**, the storyline's 30 baseline
+    jobs included. Baseline and HTCL columns must come from the same device.
+  - Figure: `figures/storyline.py --runs <dir>` writes `report/figures/storyline/storyline.*` (methods
+    alone) and `storyline_htcl.*` (each method beside its HTCL variant). It is drawn on the laptop from the
+    numbers the cluster pushes.
 
 ## Decisions that bind every run
 
@@ -61,11 +64,17 @@ cluster). Read `CLAUDE.md` (project rules), this file, `README.md`, `docs/DESIGN
 
 | Where | What |
 |---|---|
-| Laptop (MPS) | Storyline HTCL runs and figure; figure work; paper text. |
-| Cluster (Slurm, CUDA) | **P4 validation run:** every main experiment at 50 samples per class, to exercise every code path, metric and resume on CUDA and to surface failures before the full-data runs. Details below. |
+| Laptop | Figures and the dashboard, drawn from the numbers the cluster pushes; paper text; review. No training runs (the laptop freezes). |
+| Cluster (Slurm, CUDA) | **All training runs.** First the storyline (`configs/storyline.yaml`, all 60 jobs), then the P4 validation run (every main experiment at 50 samples per class). **No figures or other visualizations on the cluster**: the terminal there cannot show them. Push numbers only (below). |
 | Rented GPU (later) | ImageNet-100 (E9) at full data. |
 
-### P4 validation on the cluster
+### 1. Storyline on the cluster (first)
+
+`python -m htcl.run run configs/storyline.yaml --all` (no overrides; split it into Slurm array slices by
+`--filter method=X --filter htcl=True|False` if useful), then `python -m htcl.aggregate configs/storyline.yaml`.
+Push the numbers as soon as these 60 jobs finish, before starting P4: the laptop is waiting for them.
+
+### 2. P4 validation on the cluster
 
 Overrides:
 - Small datasets (SplitMNIST, 20NG, Cora): `--samples-per-class 50` (20 orders).
@@ -89,15 +98,29 @@ done / partial / pending, and rerunning a command resumes partial jobs.
 **Compute nodes may lack internet.** Download MNIST, CIFAR-100, 20NG (scikit-learn cache) and Cora on a
 login node first. One `plan` plus a 1-job run per dataset does it.
 
-### Reporting back
+### Reporting back (numbers only, no figures)
 
 - Run `python -m htcl.aggregate CONFIG [same overrides]` for each experiment.
-- Copy each `summary.csv` and `summary.json` into `results/cluster_p4/<run dir name>/`. `results/` is
-  git-ignored, so add these files with `git add -f`.
-- Write `results/cluster_p4/VALIDATION_REPORT.md` covering:
+- Export every finished run directory's small files into `results/cluster/<run dir name>/`, keeping the
+  `<job_id>/` layout, so the laptop can point `figures/*.py --runs` at it:
+
+  ```bash
+  rsync -a --prune-empty-dirs --include='*/' --include='*.json' --include='*.jsonl' --include='*.csv' \
+        --include='DONE' --exclude='*' runs/<run dir name>/ results/cluster/<run dir name>/
+  ```
+
+  This keeps `jobs.jsonl`, `summary.{csv,json}` and, per job, `job.json`, `metrics.json`,
+  `acc_matrix.json`, `timing.json` and `DONE`. It never copies checkpoints or model files.
+- `results/` is git-ignored, so add these files with `git add -f results/cluster`.
+- Commit to the branch `cluster/results` (create it from `tnnls-release` once; later pushes add commits)
+  and push. Commit message: the experiments and overrides included.
+- Write `results/cluster/VALIDATION_REPORT.md` covering:
   - per config: jobs done / failed and failure messages;
   - ACC, forgetting and BWT means and stds across orders;
   - anything that looks wrong: NaN, chance-level rows, negative forgetting, HTCL worse than its base;
   - wall time per job on the GPU type used.
-- Commit these to a new branch `cluster/p4-validation` and push it.
 - Never commit checkpoints, `final_model.pt`, data or anything under `runs/`.
+- Code fixes found on the cluster go to `tnnls-release` only after the author agrees, never mixed into
+  `cluster/results` commits.
+- On the laptop, `git fetch origin cluster/results && git checkout origin/cluster/results -- results/cluster`
+  brings the numbers in, without switching branches.
