@@ -1,0 +1,10 @@
+\section{Related Works}
+\label{sec:short-related-works}
+Existing methods in CL can be broadly categorized into \emph{regularization-based}~\cite{kirkpatrick2017overcoming, zenke2017continual}, \emph{replay-based}~\cite{zhuo2023continual, buzzega2020dark, shin2017continual}, and \emph{architecture-based} methods~\cite{parisi2019continual, nguyen2019toward}. These methods predominantly approach the CL problem through inductive biases or auxiliary mechanisms with varying memory–computation trade-offs, while remaining agnostic to task ordering.%
+
+\textbf{Task Ordering and Sequence Sensitivity.} Recent studies demonstrate that task order profoundly affects CL performance, where identical tasks presented in different sequences yield widely varying accuracies~\cite{bell2022effect, riemer2018learning}.  Addressing this via brute-force optimization is NP-hard due to the factorial complexity of possible permutations~\cite{knoblauch2020optimal}. %
+
+\textbf{Multi-Timescale and Dual-Model Approaches} such as DualNet~\cite{pham2021dualnet} has been proposed. For instance, DualNet employs two interacting fast and slow learners operating at different temporal scales with distinct targets. Unlike such dual-model systems, HTCL employs a consolidation mechanism derived from a second-order Taylor series expansion. Particularly, HTCL approximates the curvature of the loss landscape aimed at reducing the learner's sensitivity to task ordering.
+
+\textbf{Summary and Distinction.} In summary, while prior methods mitigate forgetting, they remain vulnerable to task-ordering. HTCL introduces a principled, multi-level framework that unifies local adaptability and hierarchical stability, yielding a tractable approximation of order invariance that standard CL methods lack.  A detailed review of related works is given in Appendix \ref{app:related_work}. 
+

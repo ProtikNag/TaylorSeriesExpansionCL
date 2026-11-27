@@ -37,6 +37,7 @@ fi
 
 files=()
 while IFS= read -r f; do
+  case "$f" in paper/*|reviews/*|example/*) continue ;; esac  # private material, removed from the release copy
   [ -f "$f" ] && [ "$f" != "$self" ] && [ "$f" != "$terms_file" ] && files+=("$f")
 done < <({ git ls-files; git ls-files --others --exclude-standard; } | sort -u)
 

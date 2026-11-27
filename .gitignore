@@ -1,7 +1,7 @@
-# Private material: never part of the anonymous release
-paper/
-reviews/
-example/
+# paper/, reviews/ and example/ are tracked for now (the author's choice, 2026-11-26) and must be removed
+# from the anonymous release copy before submission. Their old nested repositories are kept, renamed, below.
+paper/.git-private/
+reviews/.git-private/
 .remember/
 graphify-out/
 

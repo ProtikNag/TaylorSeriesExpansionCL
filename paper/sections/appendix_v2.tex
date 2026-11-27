@@ -1,0 +1,834 @@
+
+
+\input{sections/related_work}
+
+\section{Consolidation Equation~\eqref{eq:hier_update-main}}
+\label{app:update-proof}
+
+\begin{theorem}
+\label{prop:main}
+If $\mathbf{H}^{(t-1)} + \reg \mathbf{I} \succ 0$, the minimizer of the surrogate objective \eqref{eq:surrogate} is:
+\begin{equation}
+\label{eq:deltaW}
+\Dw^{*} = \left(\mathbf{H}^{(t-1)} + \reg \mathbf{I}\right)^{-1}\!\left(\reg \, \Dd^{(t)} - \mathbf{g}^{(t-1)}\right)
+\end{equation}
+and the updated hierarchical weights are:
+\begin{equation}
+\label{eq:hier_update}
+\whT{1}{t} = \whT{1}{t-1} + \left(\mathbf{H}^{(t-1)} + \reg \mathbf{I}\right)^{-1}\!\left(\reg \, \Dd^{(t)} - \mathbf{g}^{(t-1)}\right)
+\end{equation}
+where $\Dd^{(t)} = \wlT{t} - \whT{1}{t-1}$. The surrogate is strictly convex and $\Dw^{*}$ is the global minimizer.
+\end{theorem}
+
+\begin{proof}
+
+Taking the gradient of \eqref{eq:surrogate} with respect to $\Dw$ and setting it to zero:
+\begin{align*}
+    \nabla_{\Dw} &\Bigg[ \underbrace{\J(\whT{1}{t-1})}_{\text{const.}} + {\mathbf{g}^{(t-1)}}^\top \Dw + \tfrac{1}{2} \Dw^\top \mathbf{H}^{(t-1)} \Dw \\
+    &\quad + \tfrac{\reg}{2} \left\| \Dw - \Dd^{(t)} \right\|^2 \Bigg] = 0 \\
+    &\Rightarrow \mathbf{g}^{(t-1)} + \mathbf{H}^{(t-1)} \Dw + \reg \left(\Dw - \Dd^{(t)}\right) = 0 \\
+    &\Rightarrow \left(\mathbf{H}^{(t-1)} + \reg \mathbf{I}\right) \Dw = \reg \, \Dd^{(t)} - \mathbf{g}^{(t-1)} 
+\end{align*}
+
+If the smallest eigenvalue of $\mathbf{H}^{(t-1)}$ is denoted by $\mu_{\min}(\mathbf{H}^{(t-1)})$, then the eigenvalues of $\mathbf{H}^{(t-1)} + \reg \mathbf{I}$ are shifted by $\reg$, giving
+\begin{equation*}
+    \mu_{\min}\left(\mathbf{H}^{(t-1)} + \reg \mathbf{I}\right) = \mu_{\min}\left(\mathbf{H}^{(t-1)}\right) + \reg.
+\end{equation*}
+Therefore, to guarantee positive definiteness, $\reg$ must satisfy
+\begin{equation*}
+    \reg > -\mu_{\min}\left(\mathbf{H}^{(t-1)}\right).
+\end{equation*}
+If this condition holds, then $\mathbf{H}^{(t-1)} + \reg \mathbf{I} \succ 0$ and is invertible, ensuring the surrogate is strictly convex with a global minimizer and we obtain the state solution. 
+\end{proof}
+
+\section{Recursive Formulation of the Global Update Rule}
+\label{app:recursive}
+
+The recursive formulation presented in Lemma~\ref{lem:recursive} generalizes the one-step Taylor series-based update in Eq.~\eqref{eq:hier_update} to a two-point approximation. While the main paper focuses on the standard one-point second-order expansion around $\whT{1}{t-1}$, it may be  useful to understand how the cumulative effect of successive Taylor updates can be expressed in closed form. In particular, combining the updates at timestep $t-1$ and $t$ yields a two-point approximation in which the global model integrates information from two consecutive local models. This recursive view does not change the algorithm but highlights how HTCL accumulates second-order information over time and makes the additive structure inherent to sequential Taylor series expansions. 
+
+\begin{lemma}[Recursive formulation]
+\label{lem:recursive}
+Suppose the global updates at consecutive timesteps follow the Eq.~\eqref{eq:hier_update} and assume each matrix $\mathbf{H}^{(s-1)}+\reg \mathbf{I}$ is invertible. Then the cumulative second-order integration of local models into the global weights across the two timesteps yields
+\begin{equation}
+\label{eq:recursive}
+\begin{aligned}
+\whT{1}{t} 
+&= \whT{1}{t-2} 
++ (\mathbf{H}^{(t-2)} + \reg \mathbf{I})^{-1}\!\big[\reg \Dd^{(t-1)} - \mathbf{g}^{(t-2)}\big] \\
+&\qquad + (\mathbf{H}^{(t-1)} + \reg \mathbf{I})^{-1}\!\big[\reg \Dd^{(t)} - \mathbf{g}^{(t-1)}\big]
+\end{aligned}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Update at time $t-1$ using the update rule:
+\[
+\whT{1}{t-1} = \whT{1}{t-2} + (\mathbf{H}^{(t-2)}+\reg \mathbf{I})^{-1}\!\big[\reg \Dd^{(t-1)} - \mathbf{g}^{(t-2)}\big]
+\]
+Now write the update at time $t$:
+\[
+\whT{1}{t} = \whT{1}{t-1} + (\mathbf{H}^{(t-1)}+\reg \mathbf{I})^{-1}\!\big[\reg \Dd^{(t)} - \mathbf{g}^{(t-1)}\big]
+\]
+Substitute the expression for $\whT{1}{t-1}$ into the update at time $t$:
+\[
+\boxed{
+\begin{aligned}
+\whT{1}{t}
+&= \whT{1}{t-2} + (\mathbf{H}^{(t-2)}+\reg \mathbf{I})^{-1}\!\big[\reg \Dd^{(t-1)} - \mathbf{g}^{(t-2)}\big] \\
+&\qquad + (\mathbf{H}^{(t-1)}+\reg \mathbf{I})^{-1}\!\big[\reg \Dd^{(t)} - \mathbf{g}^{(t-1)}\big]
+\end{aligned}
+}
+\]
+Re-arranging terms yields the claimed identity \eqref{eq:recursive}. The derivation requires only linear algebraic substitution and the invertibility of the matrices $(\mathbf{H}^{(s-1)}+\reg \mathbf{I})$ to justify the closed-form updates. 
+\end{proof}
+
+\section{Performance Bounds for the Algorithm~\ref{alg:task-ordering}}
+\label{app:performance-bounds}
+
+\begin{theorem}[Performance Bound]
+\label{prop:group_vs_random}
+Let $\T$ be a set of $\ntasks$ tasks partitioned into $\ngroups$ disjoint groups $\G_1, \ldots, \G_\ngroups$, each of size $\gsize$ such that  $\ntasks \approx \ngroups \cdot \gsize$). %
+For each group $\G_j$, let $\gpermset_j$ denote the set of its $k!$ intra-group permutations, where each $\sigma \in \gpermset_j$ specifies an ordering of tasks within $\G_j$. Let the average accuracy of group $\G_j$ achieved with permutation $\sigma$ after training the Neural Network be
+$\Acc_j^{(\gperm)} = \frac{1}{\gsize} \sum_{\tsk \in \G_j} \Eval_{\tsk}\!\left(\w^{(j)}\right),$
+where $\Eval_{\tsk}(\w^{(j)})$ represents performance measure on $\tsk$ for a given $\gperm$. %
+    Then if each $\gperm_j$ is drawn uniformly at random from $\gpermset_j$,
+    \[
+    \sum_{j=1}^{\ngroups} \Acc^{\mathrm{HTCL}}(\G_j) \geq \E_{\gperm_1, \ldots, \gperm_\ngroups}\!\left[\sum_{j=1}^{\ngroups} \Acc_j^{(\gperm_j)}\right],
+    \]
+    where $A^{HTCL}(G_j)$ denotes the average accuracy of group $G_j$ achieved with the proposed HTCL approach.
+\end{theorem}
+
+\begin{proof}
+For each group $\G_j$ and any chosen permutation $\gperm_j \in \gpermset_j$, the performance of the HTCL, by definition, satisfies
+\[
+\Acc^{\mathrm{HTCL}}(\G_j) = \max_{\gperm \in \gpermset_j} \Acc_j^{(\gperm)} \geq \Acc_j^{(\gperm_j)}
+\]
+Summing over all $\ngroups$ groups, we have
+\[
+\sum_{j=1}^{\ngroups} \Acc^{\mathrm{HTCL}}(\G_j) \geq \sum_{j=1}^{\ngroups} \Acc_j^{(\gperm_j)}
+\]
+This holds for any fixed choice of $(\gperm_1, \ldots, \gperm_\ngroups)$. Taking expectation over random selections $\gperm_j \sim \mathrm{Uniform}(\gpermset_j)$ preserves the inequality (since the left-hand side is deterministic). Hence, we obtain the following lower bound on the expected performance of HTCL
+\[
+\boxed{\sum_{j=1}^{\ngroups} \Acc^{\mathrm{HTCL}}(\G_j) \geq \E_{\gperm_1, \ldots, \gperm_\ngroups}\!\left[\sum_{j=1}^{\ngroups} \Acc_j^{(\gperm_j)}\right]}
+\]
+
+\end{proof}
+
+\subsection{Proof of Complexity--Performance Trade-off}
+\label{app:proof_tradeoff}
+
+Theorem~\ref{prop:group_vs_random} establishes that HTCL achieves, at minimum, the expected performance under uniformly random intra-group orderings. We now quantify how this performance improves as a function of the group size $k$, and how it is traded-off against the factorial cost of intra-group permutation search.
+
+Let $t$ tasks be partitioned into $m = \lceil t/k \rceil$ disjoint groups of size $k$. For each group $G_j$, HTCL evaluates all $k!$ intra-group permutations and selects the best-performing ordering. The cumulative performance is
+\[
+A_{\mathrm{HTCL}}(k) := \sum_{j=1}^{m} \max_{\sigma \in \varsigma_j} A_j^{(\sigma)}.
+\]
+
+The total number of permutations evaluated is
+\begin{align}\label{eq:complexity}
+C(k) = m \cdot k! \approx t \cdot (k-1)!,
+\end{align}
+while the full permutation space has size $|\Pi(t)| = t!$. The fraction of explored permutations is therefore
+\[
+\rho(k) := \frac{C(k)}{t!} = \frac{(k-1)!}{(t-1)!}.
+\]
+
+Let $A_{\mathrm{HTCL}}(t)$ denote the performance under full permutation coverage (i.e., a single group of size $t$ resulting in the best order of all the tasks), and define the performance gap
+\[
+\Delta_A(k) := A_{\mathrm{HTCL}}(t) - A_{\mathrm{HTCL}}(k),
+\]
+with worst-case gap $\Delta_{A,\max} := \Delta_A(1)$.
+
+\emph{Assumption (i): Monotonicity.} The set of reachable task orderings under HTCL expands with $k$, hence $A_{\mathrm{HTCL}}(k)$ is non-decreasing and $\Delta_A(k) \ge 0$.
+
+\emph{Remark.} For small $k$, HTCL only explores permutations that respect group boundaries. For example, with $t=4$ and $k=2$, the partition $\{1,2\}\{3,4\}$ cannot realize orderings such as $(2,3,1,4)$, since task $3$ cannot appear before completing the first group. When $k=4$, all $4!$ permutations become reachable. Thus, the set of explored permutations strictly enlarges with $k$, and taking a maximum over a larger set cannot decrease performance.
+
+\medskip
+
+\emph{Assumption (ii): Linear coverage model.} The residual performance gap, $\Delta_A(k)$, scales proportionally with the unexplored fraction of the permutation space ($1-\rho(k)$). In other words, we can define the performance gap as
+\[
+\Delta_A(k) = \mathcal{C} \Delta_{A,\max} \cdot (1 - \rho(k)),
+\]
+where $\mathcal{C}>0$ is a proportionality constant.
+
+\emph{Remark.} This assumption models the unexplored permutations as contributing uniformly, in expectation, to the remaining gap. %
+
+\begin{proposition}[Complexity--performance trade-off]
+    Under the Assumptions $(i)$ and $(ii)$, we have the following relations to hold.
+
+\[
+\frac{C(k+1)}{C(k)} = k,
+\]
+\[
+\Delta_A(k) - \Delta_A(k+1) \le \mathcal{C} \Delta_{A,\max} \cdot \frac{(k-1)(k-1)!}{(t-1)!}.
+\]
+\end{proposition}
+
+\paragraph{Proof.}
+The complexity follows directly from \eqref{eq:complexity}. %
+\[
+\frac{C(k+1)}{C(k)} = \frac{t \cdot k!}{t \cdot (k-1)!} = k.
+\]
+
+For the marginal improvement,
+\[
+\Delta_A(k) - \Delta_A(k+1)
+= \mathcal{C} \Delta_{A,\max} \big(\rho(k+1) - \rho(k)\big).
+\]
+Using $\rho(k)=\frac{(k-1)!}{(t-1)!}$,
+\[
+\rho(k+1) - \rho(k)
+= \frac{k! - (k-1)!}{(t-1)!}
+= \frac{(k-1)(k-1)!}{(t-1)!},
+\]
+which yields the stated bound. \hfill $\square$
+
+\emph{Remark.}
+The computational cost grows linearly in $k$ (through the multiplicative factor $k$), while the corresponding improvement in performance is governed by a factorially small term for $k \ll t$. Consequently, most of the recoverable performance gain lies near full permutation coverage, and increasing $k$ yields diminishing returns beyond a small threshold. This explains the empirical saturation observed at small group sizes (e.g., $k \in \{2,3\}$), where HTCL captures a substantial portion of the achievable gain with modest computational overhead.
+
+\section{Time and Space Complexity Analysis}
+\label{app:complexity}
+
+This appendix provides the detailed derivations supporting Remark~\ref{rem:complexity}.  
+We analyze the exact and practical computational complexity of HTCL, including permutation search, 
+curvature computation, and hierarchical integration, and compare these with  
+standard single-model continual learning approaches.
+
+\subsection{Exact Complexity of the Global Integration}
+
+Recall that the global update for a single level is
+\[
+\whT{1}{t} 
+= \whT{1}{t-1} 
++ (\mathbf{H}^{(t-1)} + \reg \mathbf{I})^{-1}\!\big[\reg(\wlT{t} - \whT{1}{t-1}) - \mathbf{g}^{(t-1)}\big].
+\]
+
+\begin{proposition}[Exact computational cost]
+Forming and inverting the dense Hessian $\mathbf{H}^{(t-1)}\in\R^{\pdim\times \pdim}$ yields:
+\[
+\text{Time}_{\mathrm{exact}} = \Theta(\pdim^3), 
+\qquad
+\text{Memory}_{\mathrm{exact}} = \Theta(\pdim^2).
+\]
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+A full Hessian contains $\pdim^2$ entries and computing all second derivatives requires  
+$\Theta(\pdim^2)$ memory and up to $\Theta(\pdim^2 \!\cdot\! \text{samples})$ time.  
+Solving $(\mathbf{H}+\reg \mathbf{I})x=b$ via dense Cholesky or Gaussian elimination requires  
+$\Theta(\pdim^3)$ time.  
+\end{proof}
+
+\begin{corollary}[Hierarchy cost]
+For an $\nlev$-level hierarchy:
+\[
+\text{Time}_{\mathrm{exact}}^{(\nlev)} = \Theta(\nlev \pdim^3),
+\qquad 
+\text{Memory}_{\mathrm{exact}}^{(\nlev)} = \Theta(\nlev \pdim^2).
+\]
+\end{corollary}
+
+\subsection{Practical Complexity via Standard Approximations}
+
+In practice, HTCL uses scalable second-order approximations, which reduce the cubic  
+cost of exact Hessian inversion to near-linear time and memory.
+
+\paragraph{Diagonal / Fisher approximation.}  
+In our experiments we used this approximation. This approach stores only the diagonal of $\mathbf{H}$ or the Fisher information:
+\[
+\text{Time}_{\mathrm{diag}}=\Theta(\pdim),
+\qquad 
+\text{Memory}_{\mathrm{diag}}=\Theta(\pdim).
+\]
+
+\paragraph{Low-rank curvature approximation.}  
+If $\mathbf{H}$ is approximated by a low-rank factorization of rank $r\ll \pdim$,  
+then storing and applying the approximation requires:
+\[
+\text{Memory}_{\mathrm{low\text{-}rank}} = \Theta(r\pdim), 
+\qquad
+\text{Time}_{\mathrm{low\text{-}rank}} = \Theta(r\pdim).
+\]
+
+These are the two approximations used in our implementation.
+
+\subsection{Cost of Permutation Search}
+
+Let each task group contain $\gsize$ tasks.  
+For each permutation $\perm\in \gpermset_\gsize$, the local model is trained for $N_{\text{iter}}$ minibatch updates, 
+each costing $T_{\text{step}}$.  
+Let $B$ denote the minibatch size.
+
+\begin{proposition}[Exact permutation-search cost]
+\[
+\text{Time}_{\mathrm{perm,exact}}
+= \gsize!\, N_{\text{iter}}\, T_{\text{step}}
+= \Theta(\gsize!\, E \cdot \text{\#samples} \cdot \pdim).
+\]
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+Each permutation requires $N_{\text{iter}}$ updates, each with forward--backward cost  
+$T_{\text{step}} = \Theta(B\pdim)$.  
+There are $\gsize!$ permutations.  
+When models are evaluated sequentially, memory remains $\Theta(\pdim)$.  
+\end{proof}
+
+\paragraph{Practical setting.}  
+We restrict the group size to $\gsize < 5$, so that  
+\[
+\gsize! \le 24
+\]
+is a small constant.  
+Thus, the permutation-search overhead does not grow with the number of tasks and simplifies to:
+\[
+\text{Time}_{\mathrm{perm,practical}}
+= \mathcal{O}(N_{\text{iter}}\,T_{\text{step}}),
+\]
+with no additional asymptotic dependence on $\gsize$.
+
+\subsection{Total Practical Complexity of HTCL}
+
+Combining bounded permutation search with curvature-regularized global integration gives:
+\[
+\boxed{
+\begin{aligned}
+\text{Time}_{\mathrm{HTCL}} 
+={}&
+\underbrace{\mathcal{O}(N_{\text{iter}}\,T_{\text{step}})}_{\text{permutation search } (\gsize! \le 24)} \\
+&+
+\underbrace{\mathcal{O}(\pdim)}_{\text{curvature update (diag or low-rank)}}
+\end{aligned}
+}
+\]
+
+\[
+\boxed{
+\text{Memory}_{\mathrm{HTCL}}
+=
+\Theta(\nlev \pdim)
++
+\begin{cases}
+\Theta(\pdim), & \text{(diagonal)},\\[3pt]
+\Theta(r\pdim), & \text{(low-rank)}.
+\end{cases}
+}
+\]
+
+Typical configurations use  
+$\gsize < 5$ (hence $\gsize!\le 24$),  
+$r \ll \pdim$,  
+and $\nlev \in \{2,3\}$,  
+making HTCL comparable in cost to replay or EWC.
+
+\subsection{Comparison with Standard Continual Learning Methods}
+
+\paragraph{Regularization-based CL (EWC, SI, MAS).}  
+Extra memory $\Theta(\pdim)$; extra per-step time $\Theta(\pdim)$. Lightweight but order-sensitive.
+
+\paragraph{Replay-based CL (ER, DER, iCaRL).}  
+Memory $\Theta(B_{\text{buf}}\cdot\text{sample size})$;  
+extra time $\Theta(B_{\text{buf}}\cdot \pdim)$ due to rehearsal examples.
+
+\paragraph{Architecture-based CL.}  
+Memory grows with tasks: $\Theta(\sum_t \pdim_t)$;  
+time increases with model expansion: $\Theta(\pdim_{\text{total}})$.
+
+\paragraph{HTCL vs. standard CL.}  
+HTCL trades moderate extra computation (bounded permutation search + curvature integration)  
+for improved task-order robustness and multi-timescale consolidation, while maintaining  
+near-linear practical complexity through diagonal or low-rank second-order approximations.
+
+\section{Impact of Task Ordering on Model's Performance}
+\label{app: task-order-impact}
+In this section, we demonstrate the impact of task ordering on model performance across multiple domains, such as image classification, text classification, graph-based node classification, and synthetic sine regression tasks. Additionally, we examine the role of task order in facilitating positive transfer and mitigating interference.
+
+\subsection{Illustrative Example: MNIST with BCL~\cite{raghavan2021formalizing}}
+In this setup, a model sequentially learns five tasks in a BCL framework, each corresponding to different subsets of digits in the MNIST dataset. We analyze model performance under two distinct task sequences and log accuracy at each learning stage. Table~\ref{tab:mnist_results} presents task-wise accuracy values on corresponding test datasets for two task orders: Sequence A: $\langle 5, 1, 2, 3, 4 \rangle$ and Sequence B: $\langle1, 5, 2, 3, 4 \rangle$. 
+
+\begin{table}[htbp]
+\caption{Task order impact on MNIST with BCL. The table reports task-wise accuracy at each stage of training. Variability in final accuracy across task orders indicates sensitivity to task order.}
+\label{tab:mnist_results}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{cc|ccccc|c}
+\textbf{} &
+  \textbf{} &
+  \multicolumn{5}{c|}{\textbf{Accuracy}} &
+  \textbf{} \\ \hline
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} \textbf{Sequence}}} &
+  {\color[HTML]{000000} \textbf{Learned Task}} &
+  {\color[HTML]{000000} \textbf{Task\_1}} &
+  {\color[HTML]{000000} \textbf{Task\_2}} &
+  {\color[HTML]{000000} \textbf{Task\_3}} &
+  {\color[HTML]{000000} \textbf{Task\_4}} &
+  {\color[HTML]{000000} \textbf{Task\_5}} &
+  {\color[HTML]{000000} \textbf{Average Accuracy}} \\ \hline
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} }} &
+  {\color[HTML]{000000} 5} &
+  {\color[HTML]{000000} 36.0} &
+  {\color[HTML]{000000} 53.0} &
+  {\color[HTML]{000000} 17.0} &
+  {\color[HTML]{000000} 74.0} &
+  {\color[HTML]{000000} 92.0} &
+  {\color[HTML]{000000} 54.4} \\
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} }} &
+  {\color[HTML]{000000} 1} &
+  {\color[HTML]{000000} 100.0} &
+  {\color[HTML]{000000} 53.0} &
+  {\color[HTML]{000000} 17.0} &
+  {\color[HTML]{000000} 79.0} &
+  {\color[HTML]{000000} 87.0} &
+  {\color[HTML]{000000} 67.2} \\
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} }} &
+  {\color[HTML]{000000} 2} &
+  {\color[HTML]{000000} 99.0} &
+  {\color[HTML]{000000} 96.0} &
+  {\color[HTML]{000000} 49.0} &
+  {\color[HTML]{000000} 94.0} &
+  {\color[HTML]{000000} 96.0} &
+  {\color[HTML]{000000} 86.8} \\
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} }} &
+  {\color[HTML]{000000} 3} &
+  {\color[HTML]{000000} 96.0} &
+  {\color[HTML]{000000} 90.0} &
+  {\color[HTML]{000000} 93.0} &
+  {\color[HTML]{000000} 87.0} &
+  {\color[HTML]{000000} 89.0} &
+  {\color[HTML]{000000} 91.0} \\
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\multirow{-5}{*}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} \textbf{A}}}} &
+  {\color[HTML]{000000} \textbf{4}} &
+  {\color[HTML]{000000} \textbf{97.0}} &
+  {\color[HTML]{000000} \textbf{92.0}} &
+  {\color[HTML]{000000} \textbf{88.0}} &
+  {\color[HTML]{000000} \textbf{98.0}} &
+  {\color[HTML]{000000} \textbf{95.0}} &
+  {\color[HTML]{000000} \textbf{94.0}} \\ \hline
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} }} &
+  {\color[HTML]{000000} 1} &
+  {\color[HTML]{000000} 99.0} &
+  {\color[HTML]{000000} 43.0} &
+  {\color[HTML]{000000} 41.0} &
+  {\color[HTML]{000000} 67.0} &
+  {\color[HTML]{000000} 51.0} &
+  {\color[HTML]{000000} 60.2} \\
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} }} &
+  {\color[HTML]{000000} 5} &
+  {\color[HTML]{000000} 98.0} &
+  {\color[HTML]{000000} 53.0} &
+  {\color[HTML]{000000} 11.0} &
+  {\color[HTML]{000000} 75.0} &
+  {\color[HTML]{000000} 94.0} &
+  {\color[HTML]{000000} 66.2} \\
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} }} &
+  {\color[HTML]{000000} 3} &
+  {\color[HTML]{000000} 98.0} &
+  {\color[HTML]{000000} 97.0} &
+  {\color[HTML]{000000} 51.0} &
+  {\color[HTML]{000000} 74.0} &
+  {\color[HTML]{000000} 93.0} &
+  {\color[HTML]{000000} 85.8} \\
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} }} &
+  {\color[HTML]{000000} 3} &
+  {\color[HTML]{000000} 96.0} &
+  {\color[HTML]{000000} 95.0} &
+  {\color[HTML]{000000} 94.0} &
+  {\color[HTML]{000000} 63.0} &
+  {\color[HTML]{000000} 45.0} &
+  {\color[HTML]{000000} 78.6} \\
+\rowcolor[HTML]{FFFFFF} 
+\multicolumn{1}{c|}{\multirow{-5}{*}{\cellcolor[HTML]{FFFFFF}{\color[HTML]{000000} \textbf{B}}}} &
+  {\color[HTML]{000000} \textbf{4}} &
+  {\color[HTML]{000000} \textbf{92.0}} &
+  {\color[HTML]{000000} \textbf{90.0}} &
+  {\color[HTML]{000000} \textbf{86.0}} &
+  {\color[HTML]{000000} \textbf{99.0}} &
+  {\color[HTML]{000000} \textbf{91.0}} &
+  {\color[HTML]{000000} \textbf{91.6}}
+\end{tabular}%
+}
+\end{table}
+
+To construct this table, we sequentially present tasks in a specified order, training the model on one task at a time. After training each task, we evaluate the model's performance on all tasks (previously seen or unseen) and record the accuracy. The accuracy values in the table represent the model's ability to retain knowledge as it progresses through the task sequence. The last column, labeled Average Accuracy, represents the model's overall performance across all tasks at each stage of training.
+
+As training progresses, learning a new task typically leads to an immediate increase in accuracy for that specific task. However, previously learned tasks may experience either a stability effect (no change), positive transfer (accuracy improvement), or interference (accuracy degradation). The table reflects this effect, where the accuracy values evolve as more tasks are introduced. When the model completes training on Task 4, it has been exposed to all tasks, and its performance stabilizes across them. The lower half of the table follows the same calculation process for Sequence B, demonstrating how a different task order can result in varied accuracy trends. A comparison of task-wise accuracy and overall average accuracy between Sequence A and Sequence B clearly reveals variability in final performance, reinforcing the impact of task ordering on CL.
+
+Since Task 4 appears at the end of both sequences, we expect its accuracy to be relatively high, as the model has just learned it. This is evident in rows 5 and 10 of Table~\ref{tab:mnist_results}. However, accuracy for other tasks varies significantly depending on their position in the sequence, demonstrating how order influences retention. Comparing Sequence A and Sequence B, we observe two key trends:
+
+\begin{itemize}
+    \item The accuracy of each task after it has been trained is shown in columns 3-7 and indicate a significant variation in accuracy~(approximately 2-5\%).
+    \item The final average accuracy calculated after learning the final task differs between sequences (94\% and 91.6\%), suggesting that task order influences the performance.
+\end{itemize}
+
+This illustrative example demonstrates that task ordering affects both retention and adaptation. In subsequent sections, we extend this analysis across multiple datasets and learning paradigms.
+
+\subsection{Impact of Task Number on Forgetting}
+\label{app:impact-example}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/average_forgetting/average_forgetting_across_domains.pdf}
+    \caption{Impact of the number of tasks on forgetting in CL across different domains. Forgetting increases as the number of tasks grows, with models experiencing up to 20\% accuracy drop in a 10-task setting.}
+    \label{fig:forgetting_vs_tasks}
+\end{figure}
+
+Figure~\ref{fig:forgetting_vs_tasks} illustrates how forgetting exacerbates as the number of tasks increases. As we move left to right of the plot, the tasks increase. Corresponding to an increase in the number of tasks, the height of the bar plots~(which indicates the extent of forgetting) also increases. Moreover, this is true across multiple domains such as text, graph, image and numeric. This observation highlights the persistent challenge of knowledge retention in CL.
+
+The trend depicted in Figure~\ref{fig:forgetting_vs_tasks} correlates with our hypothesis. That is, as the number of tasks increase, the likelihood of encountering suboptimal task sequences grows, leading to:
+\begin{itemize}
+    \item \textbf{Greater Forgetting}: Some sequences introduce tasks with highly dissimilar representations, accelerating catastrophic forgetting.
+    \item \textbf{Stronger Interference}: Certain task orders disrupt previously learned representations, causing degradation in overall model performance.
+\end{itemize}
+
+To further investigate this phenomenon, we analyze model performance across 50 distinct task sequences, measuring accuracy/mse trends and loss variations. The box plots corresponding to this analysis is plotted in Fig. \ref{fig:results}. We do this analysis across four methods and four domains. 
+
+\begin{figure*}[t]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{p{0.12\columnwidth} p{0.22\columnwidth} p{0.22\columnwidth} p{0.22\columnwidth} p{0.22\columnwidth}}
+        & \textbf{Image} & \textbf{Text} & \textbf{Graph} & \textbf{Sine} \\
+        \textbf{EWC} &
+        \includegraphics[width=\linewidth]{figures/box_plots/ewc_image.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/ewc_text.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/ewc_graph.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/ewc_sine.pdf} \\
+        \textbf{ER} &
+        \includegraphics[width=\linewidth]{figures/box_plots/mr_image.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/mr_text.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/mr_graph.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/mr_sine.pdf} \\
+        \textbf{BCL} &
+        \includegraphics[width=\linewidth]{figures/box_plots/bcl_image.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/bcl_text.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/bcl_graph.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/bcl_sine.pdf} \\
+        \textbf{MER} &
+        \includegraphics[width=\linewidth]{figures/box_plots/mer_image.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/mer_text.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/mer_graph.pdf} &
+        \includegraphics[width=\linewidth]{figures/box_plots/mer_sine.pdf} \\
+    \end{tabular}%
+    }
+    \caption{Impact of task order comparison of CL methods—EWC, MER, BCL, and ER—across diverse domains, including image classification, text-based classification tasks, synthetic graph-structured data, and synthetic sine wave regression. The accuracies and mean squared error (MSE) losses shown are calculated after the model has learned all the tasks. Random task orders were generated for each method and domain, and the accuracy or loss was logged for each task in the sequence. The high variability observed in the box plots highlights the significant impact of task order on model performance in CL. This phenomenon is consistent across all evaluated domains.}
+    \label{fig:results}
+\end{figure*}
+
+\subsection{Impact of Task Order Across Domains}
+The box plots illustrate the variability in accuracy (or MSE loss) for each task across different sequences, highlighting the significant sensitivity of models to the task order.
+
+To generate this plot, we randomly created 50 task sequences for each domain and logged the models' performance at each training stage. By training stage, we refer to the point at which a particular task is introduced to the model. While intermediate accuracy or loss values exhibited expected fluctuations, the final performance (after training on all tasks) demonstrates a striking dependency on the task order. To observe this, observe the size of the box plot corresponding to each task in each subplot in Fig.~\ref{fig:results}. Here,  the large interquartile range (IQR) underscores the extent of this variability that we hypothesize.
+
+\textbf{Variability in Performance across Task Orders:}
+Figure~\ref{fig:results} highlights the varying sensitivity of different CL methods to task ordering. This sensitivity is evident in the spread of the box plots, where methods with wider distributions exhibit higher variability in final accuracy (or loss), whereas methods with tighter distributions demonstrate more robustness to task order. %
+
+We also note that the performance metrics can be disrupted by inconsistent sequencing. The IQR observed across methods and domains in Fig.~\ref{fig:results} reaffirms that task order is not merely a peripheral concern but a fundamental challenge in CL. Most approaches across different datasets struggle with sequence dependencies, suggesting the need for explicit task ordering strategies to enhance stability. While the range of variation is method-dependent, the range is extensive, with the minimum across all domains and methods being 2\% and the maximum being 22\%. Addressing this challenge requires domain-specific strategies to ensure consistency in learning outcomes. These insights further motivate the need for optimizing task sequencing strategies, as explored in the subsequent section, where we formalize the task ordering problem as an optimization challenge.
+
+\section{Extended Results}
+\label{app:extended-results}
+
+\subsection{Evaluation Metrics}
+\label{sec:metrics}
+
+To rigorously assess the performance and stability of our framework, we employ three standard metrics commonly used in the CL literature. Let $A_{i, j}$ denote the test accuracy on task $j$ after the model has finished learning task $i$, and let $\ntasks$ be the total number of tasks. 
+
+\textbf{Mean Accuracy.} We report the mean accuracy across all observed tasks after the training sequence is complete . It is defined as: 
+\begin{equation}
+    \text{Mean Accuracy} = \frac{1}{\ntasks} \sum_{j=1}^{\ntasks} A_{\ntasks, j}
+\end{equation}
+
+\textbf{Average Forgetting.} To quantify the extent of catastrophic forgetting, we measure the average decrease in performance for each task from its peak accuracy (immediately after training on that task) to its final accuracy \cite{yoon2019scalable}. This is calculated as: 
+\begin{equation}
+    \text{Avg. Forgetting} = \frac{1}{\ntasks-1} \sum_{j=1}^{\ntasks-1} \max_{l \in \{1, \dots, \ntasks-1\}} (A_{l,j} - A_{\ntasks,j})
+\end{equation}
+
+\textbf{Standard Deviation.} To evaluate robustness against random task orderings, we report the standard deviation of the final average accuracy across all evaluated permutations ~\cite{bell2022effect}. For a set of $P$ permutations, this is given by:
+\begin{equation}
+    \sigma_{\text{perm}} = \sqrt{\frac{1}{P} \sum_{p=1}^{P} (\text{ACC}_p - \mu_{\text{ACC}})^2}
+\end{equation}
+
+where $\text{ACC}_p$ is the Average Accuracy for the $p$-th permutation and $\mu_{\text{ACC}}$ is the mean over all permutations. A lower $\sigma_{\text{perm}}$ indicates a method that is less sensitive to the specific order in which tasks arrive.
+
+\subsection{Detailed Setup}
+\label{sec:detailed_setup}
+
+We evaluate our approach on five diverse continual learning
+benchmarks spanning image classification, text classification, and graph
+node classification. Each dataset is partitioned into disjoint tasks
+following the domain-incremental or class-incremental learning protocol, where each task introduces a new subset of classes not seen in previous tasks.
+Table~\ref{tab:dataset_setup} summarizes the dataset configurations and Table~\ref{tab:architectures} the per-dataset
+architectures.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Dataset configurations for continual learning experiments. Each dataset is split into sequential tasks with disjoint class subsets. Labels are remapped to $\{0, \ldots, C_t-1\}$ within each task.}
+\label{tab:dataset_setup}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Dataset} & \textbf{Total Classes} & \textbf{Tasks} & \textbf{Classes/Task} & \textbf{Input Dim.} & \textbf{Buffer Size} & \textbf{Domain} \\
+\midrule
+Split-MNIST      & 10  & 5  & 2  & $28 \times 28 \times 1$   & 50  & Image \\
+CIFAR-100        & 100 & 10 & 10 & $32 \times 32 \times 3$   & 500 & Image \\
+20 Newsgroups    & 20  & 5  & 4  & 20{,}000 (TF-IDF)         & 100 & Text  \\
+Cora             & 7   & 3  & 2--3 & 1{,}433 (node features) & 50  & Graph \\
+ImageNet-100 & 100 & 10 & 10 & $224 \times 224 \times 3$ & 500 & Image (ViT) \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\begin{table*}[!htbp]
+\centering
+\caption{Per-dataset architectures. The same backbone is used for the local learner and every level of the hierarchical model.}
+\label{tab:architectures}
+
+\renewcommand{\arraystretch}{1.45}
+\setlength{\tabcolsep}{7pt}
+\definecolor{rowgray}{HTML}{F4F6F9}
+\arrayrulecolor{black!75}
+
+\rowcolors{2}{rowgray}{white}
+\begin{tabularx}{\linewidth}{@{} l l l X @{}}
+\toprule
+\textbf{Dataset} & \textbf{Backbone} & \textbf{Input} & \textbf{Layer pipeline} \\
+\midrule
+Split-MNIST   & CNN + ResNet-18 & $1{\times}28{\times}28$ &
+  Conv$(1{\to}64)$ $\to$ MaxPool $\to$ Conv$(64{\to}128)$ $\to$ MaxPool
+  $\to$ $1{\times}1$ proj$(128{\to}3)$ $\to$ ResNet-18 $\to$
+  Linear$(512{\to}2)$ \\
+CIFAR-100     & ResNet-18       & $3{\times}32{\times}32$ &
+  ResNet-18 with first conv replaced by $3{\times}3$, stride $1$,
+  no maxpool $\to$ Linear$(512{\to}10)$ \\
+Cora          & 2-layer GCN     & 1{,}433-dim node features &
+  GCNConv$(1433{\to}128)$ $\to$ ReLU $\to$ Dropout$(0.5)$ $\to$
+  GCNConv$(128{\to}128)$ $\to$ ReLU $\to$ Dropout$(0.5)$ $\to$
+  Linear$(128{\to}3)$ \\
+20 Newsgroups & 3-layer MLP     & 20{,}000-dim TF-IDF &
+  Linear$(20000{\to}1024)$ $\to$ ReLU $\to$ Dropout$(0.5)$ $\to$
+  Linear$(1024{\to}512)$ $\to$ ReLU $\to$ Dropout$(0.5)$ $\to$
+  Linear$(512{\to}4)$ \\
+ImageNet-100  & ViT-S/16        & $3{\times}224{\times}224$ &
+  Pretrained ViT-S/16 from \texttt{timm} (12 layers, 6 heads, hidden
+  $384$, patch $16$; ${\approx}21.7$M params) $\to$
+  Linear$(384{\to}10)$ \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\paragraph{Image Classification.}
+For \textbf{Split-MNIST}, we partition the 10 digit classes into 5 consecutive tasks, each containing 2 classes (e.g., Task 1: digits 0--1, Task 2: digits 2--3, etc.). The grayscale images ($28 \times 28$) are normalized and fed directly to the network. Because ResNet-18 expects a 3-channel input, the leading 2-layer CNN lifts the single-channel image to a 3-channel representation before the backbone. For \textbf{CIFAR-100}, we divide the 100 fine-grained classes into 10 tasks of 10 classes each. We apply standard data augmentation including random crops with 4-pixel padding and horizontal flips during training. The first convolution of ResNet-18 is replaced with a $3\!\times\!3$ stride-$1$ layer and the initial maxpool is removed so that the $32 \times 32$ input is not down-sampled too aggressively.
+
+\paragraph{Image Classification at Scale (ImageNet-100).}
+To verify that HTCL transfers to large-scale, modern transformer architectures, we additionally evaluate on a 100-class subset of ImageNet. The $100$ classes are partitioned into $10$ tasks of $10$ classes each. Images are resized to $224\!\times\!224$, normalized with the standard ImageNet mean and standard deviation, and augmented at training time with random resized crops and horizontal flips. The backbone is a ViT-S/16 ($\approx\!21.7$M parameters) initialized from the publicly available \texttt{timm} weights and finetuned end-to-end. Following the domain-incremental protocol described above, the classifier head is a single linear layer mapping the $384$-dimensional ViT features to the
+$10$ task-local classes; per-task labels are remapped to $\{0, \ldots, 9\}$ as in the other benchmarks. 
+
+\paragraph{Text Classification.}
+The \textbf{20 Newsgroups} dataset consists of approximately 18,000 newsgroup posts across 20 categories. We extract TF-IDF features with a vocabulary size of 20,000 and partition the categories into 5 tasks of 4 classes each. The features are consumed by a 3-layer MLP with two hidden ReLU blocks of width $1024$ and $512$, each followed by dropout at rate $0.5$.
+
+\paragraph{Graph Classification.}
+For \textbf{Cora}, a citation network with 2,708 nodes and 7 classes, we split the classes into 3 tasks. Nodes are randomly partitioned into 80\% training and 20\% test sets while preserving class distributions. We use the 1,433-dimensional bag-of-words node features as input. The classifier is a 2-layer Graph Convolutional Network with hidden width $128$ and dropout $0.5$ between layers, operating on the full graph at every forward pass so that the message-passing structure is preserved across tasks.
+
+\paragraph{Training Protocol.}
+All experiments use SGD with momentum 0.9. Table~\ref{tab:hyperparams} details the hyperparameter settings. For replay-based methods (ER, DER, SER, and HTCL), we maintain an experience replay buffer that stores samples from previous tasks. The buffer is populated using reservoir sampling to ensure balanced representation across all seen classes. On ImageNet-100 the same SGD configuration is used with the lower learning rate of $10^{-3}$ that is standard for finetuning ViTs from pretrained weights.
+
+\begin{table*}[ht]
+\centering
+\caption{Training hyperparameters for each dataset.}
+\label{tab:hyperparams}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Parameter} & \textbf{ImageNet-100} & \textbf{Split-MNIST} & \textbf{CIFAR-100} & \textbf{20 Newsgroups} & \textbf{Cora} \\
+\midrule
+Learning Rate      & $10^{-3}$ & 0.01      & 0.1       & 0.001     & 0.01  \\
+Batch Size         & 32       & 64        & 32        & 32        & 32    \\
+Epochs per Task    & 5         & 10        & 10        & 10        & 10    \\
+Weight Decay       & $10^{-4}$ & $10^{-4}$ & $10^{-4}$ & $10^{-4}$ & $10^{-4}$ \\
+Buffer Size        & 500      & 50        & 500       & 100       & 50    \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{HTCL-Specific Parameters.}
+For our hierarchical approach, we evaluate configurations with $\nlev \in \{2, 3\}$ hierarchy levels. The group size is set to $\gsize=2$ tasks per group. We regularization strength $\reg > -\mu_{\min}(\mathbf{H}^{(t-1)})$. 
+
+All experiments are conducted on a single NVIDIA GPU with CUDA 12.3. We report results averaged over 200 random task orderings to account for permutation sensitivity, with standard deviations included. The random seed is fixed at 42 for reproducibility.
+
+\subsection{Finding the Optimal Group Size}
+\label{app:break-even-point}
+
+{Increasing the group size $k$ allows HTCL to explore a larger space of intra-group orderings. However, this benefit comes at a factorial computational cost, as the number of permutations scales as $k!$, while the achievable accuracy is inherently bounded by the optimal task order (see Theorem~\ref{prop:group_vs_random}). The key question is therefore where the additional compute ceases to yield meaningful gains.
+
+To study this trade-off on SplitMNIST with SER + HTCL-L2, we sweep $k \in \{1, \dots, 5\}$ and measure the marginal accuracy gain normalized by the logarithmic increase in compute:
+\begin{equation}
+    \rho(k \to k{+}1)
+    \;=\;
+    \frac{\mathrm{acc}(k{+}1) - \mathrm{acc}(k)}{\log_{10} time(k{+}1) - \log_{10} time(k)},
+    \label{eq:break_even_metric}
+\end{equation}
+where $time(k)$ denotes the wall-clock time at group size $k$.
+
+As shown in Fig.~\ref{fig:break-even-point}, $\rho$ increases from $k=1 \to 2$ and peaks at $k=2 \to 3$, after which it drops sharply and approaches zero. This indicates a clear point of diminishing returns: beyond $k=3$, additional compute yields negligible accuracy improvements. 
+
+While the exact location of this "break-even point" may vary across benchmarks, its presence is expected, since factorial growth in compute will eventually dominate any bounded accuracy gains.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/optimal-group-size/knee.pdf}
+  \caption{\textbf{Break-even point in group size on SplitMNIST
+    (SER + HTCL-L2).} The marginal return $\rho$ from
+    Eq.~\eqref{eq:break_even_metric} climbs from $29.6$ at $k=1 \to 2$
+    to a peak of $55.9$ at $k=2 \to 3$, then collapses to $9.8$ at
+    $k=3 \to 4$ and to $\approx 0$ at $k=4 \to 5$. Beyond the peak,
+    every additional ten times of compute buys essentially no accuracy.}
+    \label{fig:break-even-point}
+\end{figure}
+
+\subsection{Comparison with First-order Consolidation and DiLoCo-style Aggregator}
+\label{app:fo-diloco}
+
+We examine the role of the diagonal Hessian in Eq.~\eqref{eq:hier_update-main} from two complementary perspectives.
+
+\textbf{Internal ablation.} Setting $\mathbf{H}^{(t-1)} = \mathbf{0}$ reduces the preconditioner to $(\reg \mathbf{I})^{-1} = \reg^{-1}\mathbf{I}$, yielding the first-order proximal update
+\begin{equation}
+\label{eq:firstorder}
+\begin{aligned}
+\whT{1}{t} &= \whT{1}{t-1} + \frac{1}{\reg}\!\left(\reg\,\Dd^{(t)} - \mathbf{g}^{(t-1)}\right) \\
+&= \whT{1}{t-1} + \Dd^{(t)} - \frac{1}{\reg}\mathbf{g}^{(t-1)}.
+\end{aligned}
+\end{equation}
+This form preserves the proximal term $\Dd^{(t)}$ and the gradient correction $\mathbf{g}^{(t-1)}/\reg$, but removes curvature information.
+
+\textbf{External comparison.} HTCL follows a group-wise train-then-consolidate procedure that is structurally similar to DiLoCo's outer-update framework~\cite{douillard2023diloco}, where multiple workers train independently and their models are periodically aggregated. The two approaches differ in how this aggregation is performed. DiLoCo uses first-order parameter averaging across workers, while HTCL applies a second-order Taylor update using the diagonal Hessian as a preconditioner. To isolate this difference, we construct a DiLoCo-style variant by replacing $\whT{1}{t}$ with the elementwise mean of the $K$ worker models at each group boundary, keeping all other components unchanged. Both variants are evaluated on SplitMNIST with $k = 2$ and $L = 2$. Results are reported in Table~\ref{tab:firstorder}.
+
+\begin{table}[!htbp]
+\centering
+\caption{First-order consolidation variants on SplitMNIST with $k = 2$, $L = 2$. Accuracy, standard deviation, and forgetting are reported in \%. Arrows indicate the direction of change relative to the standalone baseline. The best value per metric within each baseline group is bolded.}
+\label{tab:firstorder}
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{lccc}
+\toprule
+Method & Accuracy & Std & Forgetting \\
+\midrule
+ER                                & 89.3              & \phantom{0}5.5              & 30.3 \\
+ER + HTCL-L2                      & \textbf{92.0} $\uparrow$ & \phantom{0}\textbf{3.5} $\downarrow$ & \textbf{12.5} $\downarrow$ \\
+ER + HTCL$_{\text{1st}}$          & 60.5 $\downarrow$ & 10.9 $\uparrow$            & 20.2 $\downarrow$ \\
+ER + DiLoCo                       & 70.5 $\downarrow$ & \phantom{0}8.3 $\uparrow$  & 14.1 $\downarrow$ \\
+\midrule
+SER                               & 88.5              & \phantom{0}5.6              & 32.0 \\
+SER + HTCL-L2                     & \textbf{95.6} $\uparrow$ & \phantom{0}\textbf{1.8} $\downarrow$ & \phantom{0}9.8 $\downarrow$ \\
+SER + HTCL$_{\text{1st}}$         & 67.5 $\downarrow$ & 12.4 $\uparrow$            & 12.1 $\downarrow$ \\
+SER + DiLoCo                      & 67.0 $\downarrow$ & \phantom{0}6.8 $\uparrow$  & \phantom{0}\textbf{9.4} $\downarrow$ \\
+\midrule
+DER                               & 86.5              & \phantom{0}4.9              & 35.0 \\
+DER + HTCL-L2                     & \textbf{95.1} $\uparrow$ & \phantom{0}\textbf{1.8} $\downarrow$ & \textbf{10.2} $\downarrow$ \\
+DER + HTCL$_{\text{1st}}$         & 68.1 $\downarrow$ & 11.4 $\uparrow$            & 11.1 $\downarrow$ \\
+DER + DiLoCo                      & 71.2 $\downarrow$ & \phantom{0}5.5 $\uparrow$  & 15.3 $\downarrow$ \\
+\midrule
+EWC                               & 79.3              & \phantom{0}9.8              & 42.8 \\
+EWC + HTCL-L2                     & \textbf{85.2} $\uparrow$ & \phantom{0}\textbf{6.2} $\downarrow$ & 28.9 $\downarrow$ \\
+EWC + HTCL$_{\text{1st}}$         & 63.0 $\downarrow$ & 14.2 $\uparrow$            & \textbf{21.9} $\downarrow$ \\
+EWC + DiLoCo                      & 59.1 $\downarrow$ & 18.7 $\uparrow$            & 29.1 $\downarrow$ \\
+\midrule
+SR                                & 88.0              & \phantom{0}7.5              & 31.0 \\
+SR + HTCL-L2                      & \textbf{90.0} $\uparrow$ & \phantom{0}\textbf{5.0} $\downarrow$ & 14.0 $\downarrow$ \\
+SR + HTCL$_{\text{1st}}$          & 61.4 $\downarrow$ & 11.9 $\uparrow$            & 16.5 $\downarrow$ \\
+SR + DiLoCo                       & 68.8 $\downarrow$ & \phantom{0}7.8 $\uparrow$  & \textbf{11.5} $\downarrow$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Across all baselines, both first-order variants reduce forgetting but consistently lower accuracy relative to the standalone models. They also increase variability across task orderings, as reflected in higher standard deviations. In contrast, the second-order update (HTCL-L2) improves both accuracy and stability while reducing forgetting.
+
+These results indicate that the diagonal Hessian plays a central role in the consolidation step. Removing it—either by zeroing $\mathbf{H}^{(t-1)}$ or by replacing the update with parameter averaging—changes the balance between stability and accuracy and increases sensitivity to task ordering.
+
+\subsection{Experiments on Large Scale Dataset: ImageNet-100 with ViT Architecture}
+\label{app:large-scale}
+
+To stress HTCL beyond small-scale benchmarks, we evaluate on a 100-class ImageNet subset (10 sequential tasks, 10 classes per task) with a ViT-S/16 backbone. Both domain-incremental and class-incremental protocols are reported, with $k = 2$, $L = 2$, and 200 task permutations per setting. Training matches the prior protocol (5 epochs per task, AdamW, batch 32, replay buffer 500). Results appear in Table~\ref{tab:imagenet100}.
+
+\begin{table}[!htbp]
+\centering
+\caption{ImageNet-100 with ViT-S/16, $k = 2$, $L = 2$, 200 task permutations per setting. Accuracy, standard deviation, and forgetting are reported in \%. Arrows mark the direction of change versus the standalone baseline. Best result per metric within each baseline group is bolded.}
+\label{tab:imagenet100}
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.05}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{l ccc ccc}
+\toprule
+& \multicolumn{3}{c}{Domain-IL} & \multicolumn{3}{c}{Class-IL} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+Method & Acc & Std & Forget & Acc & Std & Forget \\
+\midrule
+ER                       & 55.6              & 1.8              & 43.9              & 31.4              & 3.5              & 61.7 \\
+ER + HTCL-L2             & \textbf{60.3} $\uparrow$ & \textbf{1.4} $\downarrow$ & \textbf{34.7} $\downarrow$ & \textbf{37.2} $\uparrow$ & \textbf{2.8} $\downarrow$ & \textbf{52.6} $\downarrow$ \\
+\midrule
+SER                      & 57.3              & 1.9              & 41.8              & 33.2              & 3.2              & 59.8 \\
+SER + HTCL-L2            & \textbf{62.7} $\uparrow$ & \textbf{1.5} $\downarrow$ & \textbf{32.6} $\downarrow$ & \textbf{39.4} $\uparrow$ & \textbf{2.5} $\downarrow$ & \textbf{50.7} $\downarrow$ \\
+\midrule
+DER                      & 56.9              & 1.7              & 42.4              & 32.1              & 3.3              & 60.9 \\
+DER + HTCL-L2            & \textbf{61.6} $\uparrow$ & \textbf{1.5} $\downarrow$ & \textbf{33.2} $\downarrow$ & \textbf{38.3} $\uparrow$ & \textbf{2.6} $\downarrow$ & \textbf{51.9} $\downarrow$ \\
+\midrule
+EWC                      & 36.4              & 3.9              & 52.6              & 12.7              & 5.4              & 71.2 \\
+EWC + HTCL-L2            & \textbf{42.8} $\uparrow$ & \textbf{3.0} $\downarrow$ & \textbf{43.7} $\downarrow$ & \textbf{20.8} $\uparrow$ & \textbf{4.4} $\downarrow$ & \textbf{59.7} $\downarrow$ \\
+\midrule
+SR                       & 45.7              & 2.8              & 48.9              & 17.6              & 4.7              & 66.8 \\
+SR + HTCL-L2             & \textbf{51.3} $\uparrow$ & \textbf{2.2} $\downarrow$ & \textbf{39.8} $\downarrow$ & \textbf{24.7} $\uparrow$ & \textbf{3.8} $\downarrow$ & \textbf{55.6} $\downarrow$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+HTCL-L2 improves accuracy and reduces both standard deviation and forgetting across every baseline in both settings, with the largest absolute accuracy gains on the regularization-based methods (EWC, SR) where the diagonal Hessian compensates for weak intrinsic retention. The class-incremental setting is uniformly harder, but the relative gains from curvature-aware consolidation are preserved.
+
+\subsection{Performance with Smaller Buffer Size}
+\label{app:small-buffer}
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/memory.pdf}
+  \caption{\textbf{Effect of replay buffer size on SplitMNIST and Split CIFAR-100.} ER, DER, and SER with and without HTCL across buffer capacities. HTCL gains are largest under small buffers, where curvature-aware consolidation compensates for limited rehearsal; the relative advantage shrinks as the buffer approaches joint-training capacity.}
+    \label{fig:memory}
+\end{figure}
+
+Replay-based CL methods rely heavily on buffer capacity. When replay memory is sufficiently large, rehearsal can approximate joint training and substantially mitigate forgetting. However, in realistic low-memory regimes, replay becomes much less reliable. To evaluate the robustness of HTCL under such constraints, we conduct experiments on both SplitMNIST and Split CIFAR-100 while varying the replay buffer size. For SplitMNIST, we sweep buffer sizes in $\{30, 50, 100, 200, 500\}$, whereas for Split CIFAR-100 we evaluate buffers of size $50$, $200$, and $1000$ to reflect the substantially larger number of classes.
+
+Figure~\ref{fig:memory} reports the performance of ER, DER, and SER, together with their HTCL-augmented variants. Under very small buffers, standalone replay baselines exhibit severe forgetting due to insufficient coverage of previously learned tasks. In contrast, HTCL-enhanced models (ER+HTCL, DER+HTCL, SER+HTCL) consistently achieve higher accuracy, demonstrating that curvature-aware consolidation compensates for limited rehearsal by providing additional stability.
+
+As buffer capacity increases, the performance gap between the baselines and their HTCL-augmented counterparts narrows. On SplitMNIST, replay approximates joint training once the buffer reaches moderate size, at which point model capacity becomes the dominant limiting factor and HTCL offers only marginal improvements. On Split CIFAR-100, extremely small buffers (e.g., 50 samples) produce unstable and low-quality performance, reflecting the insufficiency of such memory to represent 100 classes. Increasing the buffer to 200 yields a substantial improvement, and further increasing it to 1000 reduces the benefits of HTCL, mirroring the saturation observed in SplitMNIST.
+
+These results confirm that HTCL is particularly advantageous in low-memory regimes: it acts as a complementary stabilization mechanism that mitigates forgetting when replay alone is inadequate, while remaining lightweight enough to avoid hindering performance when memory is plentiful.
+
+\subsection{Relation to Federated Aggregation Methods}
+\label{app:federated}
+
+Although HTCL shares a structural similarity with federated learning methods, their objectives and use-cases are very different. Both maintain multiple models and periodically consolidate their updates into a single global model. For completeness and to evaluate these approaches for their ability to consolidate performance across tasks, we compared HTCL against two widely used federated baselines, FedAvg~\cite{mcmahan2017communication} and FedProx~\cite{li2020federated}. 
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/updated_figures/radar.pdf}
+  \caption{\textbf{Comparison of HTCL with federated learning baselines.} Local models are trained using SER and DER on SplitMNIST, followed by global consolidation using HTCL, FedAvg, or FedProx. SER and DER without consolidation serve as baselines. (a) HTCL achieves consistently balanced accuracy across all tasks, whereas FedAvg and FedProx attain higher accuracy on some tasks at the expense of others. (b) Standard deviation across task permutations shows that HTCL provides the strongest reduction in task-order sensitivity compared to federated baselines.}
+    \label{fig:fed-comp}
+\end{figure}
+
+\textbf{Experimental setup.} In our experiment, we treat each task in the continual learning sequence as analogous to a federated client. For each task, we first train a local model using either SER or DER as the base continual learning method. After training on each task, we update a global model using one of three consolidation strategies. These are HTCL, FedAvg, or FedProx. We then evaluate the final global model on all tasks and measure both accuracy and sensitivity to task ordering.
+
+\textbf{Balanced performance across tasks.} Figure~\ref{fig:fed-comp}(a) shows per-task accuracy on SplitMNIST. FedAvg and FedProx achieve high accuracy on some tasks but at the cost of degraded performance on others. This uneven pattern suggests that simple averaging or proximal regularization does not account for the sequential structure of continual learning. HTCL achieves more balanced performance across all five tasks. 
+
+\textbf{Task-order robustness.} Figure~\ref{fig:fed-comp}(b) compares the standard deviation of accuracy across different task orderings. Both FedAvg and FedProx reduce variance compared to the raw SER and DER baselines, indicating some degree of stabilization. However, HTCL achieves the lowest standard deviation overall. This difference highlights a fundamental distinction between the two settings. Federated methods dampen update magnitudes through averaging or regularization. HTCL instead consolidates knowledge using second-order information that is tailored to sequential, temporal learning.
+
+\section{Limitations}
+\label{app:limitation}
+HTCL inherits two practical constraints from its design. First, intra-group permutation search scales as $k!$, restricting useful group sizes to $k < 5$; the empirical break-even on SplitMNIST occurs at $k = 3$ (Appendix~\ref{app:break-even-point}), beyond which additional compute yields negligible accuracy gains. Second, the closed-form update in Eq. (6) requires inverting a $d \times d$ Hessian and is intractable at modern model scales, so all reported results use diagonal or low-rank curvature approximations. The accuracy of these approximations near saddle regions of the loss landscape is not characterized in this work. Wall-clock cost also grows roughly $4\times$ relative to the underlying baseline at $L=2$, which may be prohibitive for latency-bounded continual deployments.
+
+

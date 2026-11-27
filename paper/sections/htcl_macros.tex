@@ -1,0 +1,91 @@
+% ============================================================
+% HTCL Notation Macros
+% For: Hierarchical Taylor Series Continual Learning
+% ============================================================
+
+% ============================================================
+% MODEL PARAMETERS
+% ============================================================
+\newcommand{\wh}[1]{\mathbf{w}_{#1}}            % Hierarchical model at level #1
+\newcommand{\wl}{\mathbf{w}_{\ell}}             % Local model weights  
+\newcommand{\w}{\mathbf{w}}                     % General weights
+\newcommand{\wopt}{\mathbf{w}^{*}}              % Optimal weights
+\newcommand{\whT}[2]{\mathbf{w}_{#1}^{(#2)}}    % Hierarchical weights level #1 at time #2
+\newcommand{\wlT}[1]{\wl^{(#1)}}                % Local weights at time #1
+
+% ============================================================
+% TASKS AND GROUPS
+% ============================================================
+\newcommand{\T}{\mathbb{T}}                    % Task set
+\newcommand{\tsk}{\tau}                         % Individual task
+\newcommand{\G}{\mathrm{G}}                    % Task group
+\newcommand{\D}{\mathrm{D}}                    % Dataset
+\newcommand{\Dist}{\mathbb{P}}                 % Data distribution
+
+% ============================================================
+% DATA
+% ============================================================
+\newcommand{\x}{\mathbf{x}}                     % Input data
+\newcommand{\y}{y}                              % Labels
+
+% ============================================================
+% PERMUTATIONS
+% ============================================================
+\newcommand{\perm}{\pi(t)}                         % Individual permutation
+\newcommand{\permset}{\Pi(t)}                      % Set of all permutations
+\newcommand{\permopt}{\pi^{*}}                  % Optimal permutation
+\newcommand{\gpermset}{\varsigma}               % Intra-group permutation set
+\newcommand{\gperm}{\sigma}                     % group perm
+
+% ============================================================
+% LOSS FUNCTIONS
+% ============================================================
+\newcommand{\loss}{\mathrm{L}}                 % Task loss function
+\newcommand{\J}{\mathcal{J}}                    % Cumulative/Expected loss
+
+% ============================================================
+% DERIVATIVES
+% ============================================================
+% Note: Gradient and Hessian use \mathbf{g} and \mathbf{H} directly in text
+% No macros defined to avoid conflicts with other packages
+
+% ============================================================
+% REGULARIZATION AND UPDATES
+% ============================================================
+\newcommand{\reg}{\lambda}                      % Regularization coefficient
+\newcommand{\Dw}{\Delta\mathbf{w}}              % Weight change
+\newcommand{\Dd}{\Delta\mathbf{d}}              % Local-hierarchical difference
+
+% ============================================================
+% METRICS AND EVALUATION
+% ============================================================
+\newcommand{\Acc}{A}                            % Accuracy/performance metric
+\newcommand{\Eval}{\mathrm{Eval}}               % Evaluation function
+\newcommand{\TrainSeq}{\mathrm{TrainSeq}}       % Sequential training function
+
+% ============================================================
+% HIERARCHY
+% ============================================================
+\newcommand{\hier}{\mathcal{H}}                 % Hierarchy set
+\newcommand{\nlev}{L}                           % Number of hierarchical levels
+
+% ============================================================
+% DIMENSIONS AND COUNTS
+% ============================================================
+\newcommand{\ntasks}{t}                         % Number of tasks
+\newcommand{\ngroups}{m}                        % Number of groups
+\newcommand{\gsize}{k}                          % Group size
+\newcommand{\pdim}{d}                           % Parameter dimension
+\newcommand{\ncatch}{N_{\mathrm{catch}}}        % Catch-up iterations
+
+% ============================================================
+% OPERATORS
+% ============================================================
+\newcommand{\E}{\mathbb{E}}                     % Expectation
+\newcommand{\R}{\mathbb{R}}                     % Real numbers
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+% ============================================================
+% END OF MACROS
+% ============================================================

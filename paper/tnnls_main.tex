@@ -1,0 +1,87 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{microtype}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{tikz}
+\usetikzlibrary{tikzmark,calc}
+
+\definecolor{phaseLocalBg}{HTML}{DBEAFE}   % pale blue   (tint of #2563EB)
+\definecolor{phaseConsolBg}{HTML}{D1FAE5}  % pale green  (tint of #059669)
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalize,noabbrev]{cleveref}
+\newcommand{\legendBox}[1]{{\color{#1}\rule[-0.05ex]{1.2em}{1.0ex}}}
+
+% Make hyperref and algorithmic work together
+\renewcommand{\theHalgorithm}{\arabic{algorithm}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THEOREMS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{assumption}[theorem]{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\input{sections/htcl_macros}
+
+\begin{document}
+
+\title{Mitigating Task-Order Sensitivity and Forgetting via Hierarchical Second-Order Consolidation}
+
+% TODO: fill in full author list and affiliations
+\author{Protik~Nag,~\IEEEmembership{Student Member,~IEEE,}
+        Second~Author,
+        and~Third~Author% <-this % stops a space
+\thanks{P. Nag is with the Department of Computer Science and Engineering, University of South Carolina, Columbia, SC 29208 USA (e-mail: protiknag08@gmail.com).}%
+\thanks{Manuscript received Month DD, 2026; revised Month DD, 2026.}}
+
+\markboth{IEEE Transactions on Neural Networks and Learning Systems,~Vol.~XX, No.~X, Month~2026}%
+{Nag \MakeLowercase{\textit{et al.}}: Hierarchical Second-Order Consolidation for Continual Learning}
+
+\maketitle
+
+\begin{abstract}
+We introduce Hierarchical Taylor Series-based Continual Learning (HTCL), a framework that reduces the sensitivity of continual learners to random task ordering by coupling fast local adaptation with conservative, second-order global consolidation. Rather than searching for the globally optimal task sequence, which is intractable due to factorial complexity, HTCL targets order robustness by partitioning the task stream into small groups and integrating their best per-group solutions through a Hessian-regularized Taylor expansion. We theoretically derive a unique closed-form consolidation update and establish a performance bound on HTCL's expected accuracy, showing that it improves over random task orderings. The approach naturally extends to an $L$-level hierarchy, enabling multiscale knowledge integration in a manner not supported by conventional single-level CL systems. Across a wide range of datasets and replay and regularization baselines, HTCL acts as a model-agnostic consolidation layer that consistently enhances performance, yielding mean accuracy gains of $7\%$ to $25\%$ while reducing the standard deviation of final accuracy by up to $68\%$ across random task permutations.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Continual learning, catastrophic forgetting, task-order sensitivity, second-order optimization, Taylor series expansion, hierarchical consolidation.
+\end{IEEEkeywords}
+
+\input{sections/introduction}
+\input{sections/short-related-work}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/conclusion}
+
+\appendices
+\input{sections/appendix_v2}
+
+\section*{Acknowledgment}
+Funding and acknowledgments to be added.
+
+\bibliographystyle{IEEEtran}
+\bibliography{IEEEabrv,references}
+
+\end{document}

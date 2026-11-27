@@ -1,7 +1,8 @@
 # Handoff (tnnls-release)
 
-State of the TNNLS revision code on 2026-11-26, for any session that picks the work up (laptop or
-cluster). Read this, then `README.md`, then `docs/DESIGN.md` (the binding contract) before changing code.
+State of the TNNLS revision on 2026-11-26, for any session that picks the work up (laptop or
+cluster). Read `CLAUDE.md` (project rules), this file, `README.md`, `docs/DESIGN.md` (the binding contract), and
+`reviews/PLAN.md` (storyline and decisions), `reviews/CONCERNS.md` and the manuscript in `paper/` before acting.
 
 ## Where things stand
 
