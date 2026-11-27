@@ -52,8 +52,8 @@ def test_reservoir_capacity_and_uniformity() -> None:
 
 
 def test_canonical_and_aliases() -> None:
-    """Groups are sorted internally; group-schedule HTCL jobs with an already-planned canonical form alias
-    it, baselines never alias."""
+    """Group-schedule HTCL is invariant to within-window order, so canonical duplicates alias one runner
+    (a compute saver). Baselines and online HTCL never alias."""
     assert canonical((3, 1, 0, 2, 4), 2) == (1, 3, 0, 2, 4)
     assert canonical((2, 0, 1), 2) == (0, 2, 1)
     orders = sample_orders(3, 20, 0)
@@ -71,6 +71,19 @@ def test_canonical_and_aliases() -> None:
     for j in htcl:
         if j["alias_of"]:
             assert canonical(runners[j["alias_of"]]["order"], 2) == canonical(j["order"], 2)
+
+
+def test_explicit_task_orders() -> None:
+    """A config's `task_orders` are used verbatim (prefix under --orders), with permutation validation."""
+    from htcl.run import resolve_orders
+    explicit = [[0, 1, 2, 3, 4], [4, 3, 2, 1, 0], [3, 4, 2, 1, 0]]
+    cfg = {"task_orders": explicit, "orders_seed": 0}
+    assert resolve_orders(cfg, 5, 5) == [tuple(o) for o in explicit]  # all, when n >= len
+    assert resolve_orders(cfg, 5, 2) == [tuple(o) for o in explicit[:2]]  # --orders prefixes
+    assert resolve_orders({}, 5, 3) == sample_orders(5, 3, 0)  # no task_orders -> sampled
+    import pytest
+    with pytest.raises(ValueError):
+        resolve_orders({"task_orders": [[0, 1, 2, 3]]}, 5, 1)  # not a permutation of 0..4
 
 
 def test_method_defaults_enter_job_spec() -> None:
@@ -216,6 +229,43 @@ def test_htcl_ewc_own_buffer_mid_rows_and_resume(tmp_path) -> None:
     assert full == json.loads((tmp_path / "resumed" / "acc_matrix.json").read_text())
     rows = full["matrices"]["main"]
     assert rows[2] == rows[1]  # position 2 is inside group 2: deployed model = group 1's top model
+
+
+def test_group_skip_incomplete_final_group() -> None:
+    """A final group of fewer than k tasks is NOT consolidated: _consolidate runs once per FULL group only,
+    and the incomplete group deploys the base-trained local (no Taylor step)."""
+    from htcl.engine import job_steps, load_data, make_learner
+    cfg = {"experiment": "t", "orders": 1,
+           "datasets": [{"name": "splitmnist", "samples_per_class": 6, "lr": 0.01, "batch_size": 8,
+                         "epochs": 1, "buffer_size": 10}],
+           "methods": [{"name": "er", "htcl": {"k": 2, "schedule": "group", "curvature_samples": 8}}]}
+    (job,) = plan_jobs(cfg, {})
+    cpu = torch.device("cpu")
+    torch.manual_seed(0)
+    learner = make_learner(job, load_data(job["dataset"]), cpu)
+    calls, orig = [], learner._consolidate
+    learner._consolidate = lambda group, cands: (calls.append(list(group)), orig(group, cands))[1]
+    steps = job_steps(job)  # 5 tasks, k=2 -> [[a,b],[c,d],[e]]; the trailing [e] is incomplete
+    assert [len(s) for s in steps] == [2, 2, 1]
+    for step in steps:
+        learner.learn(step)
+    assert len(calls) == 2, calls  # only the two full groups consolidated
+    deployed, local = learner.levels[-1].state_dict(), learner.method.model.state_dict()
+    assert all(torch.equal(deployed[k], local[k]) for k in deployed)  # incomplete group deploys the local
+
+
+def test_group_guard_logs_and_runs(tmp_path) -> None:
+    """Group schedule with guard=true completes, writes finite metrics, and records accept/reject decisions."""
+    from htcl.engine import run_job
+    cfg = {"experiment": "t", "orders": 1,
+           "datasets": [{"name": "splitmnist", "samples_per_class": 6, "lr": 0.01, "batch_size": 8,
+                         "epochs": 1, "buffer_size": 10}],
+           "methods": [{"name": "er", "htcl": {"k": 2, "schedule": "group", "guard": True, "curvature_samples": 8}}]}
+    (job,) = plan_jobs(cfg, {})
+    assert run_job(job, tmp_path / "g", torch.device("cpu"))
+    metrics = json.loads((tmp_path / "g" / "metrics.json").read_text())
+    g = metrics["htcl_guard"]
+    assert g["steps"] >= 1 and 0 <= g["taken"] <= g["steps"]  # one decision per full group, logged
 
 
 def test_classes_per_task_prefix() -> None:

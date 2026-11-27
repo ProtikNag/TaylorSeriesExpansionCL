@@ -103,6 +103,24 @@ def run_dir(cfg: dict, overrides: dict) -> Path:
     return Path(overrides.get("runs_root") or "runs") / (cfg["experiment"] + ("__" + "_".join(tags) if tags else ""))
 
 
+def resolve_orders(cfg: dict, num_tasks: int, n_orders: int) -> list[tuple[int, ...]]:
+    """Task orders for a dataset: explicit `task_orders` from the config when given, else sampled.
+
+    `task_orders` (optional) is a list of orders written verbatim, each a permutation of
+    ``range(num_tasks)``; `--orders N` keeps the first N (reduced runs stay a prefix of full ones).
+    Without it, draw `n_orders` distinct orders uniformly at random with `orders_seed` (the default
+    for every experiment). Explicit orders are opt-in and used only by configs that set them.
+    """
+    explicit = cfg.get("task_orders")
+    if not explicit:
+        return sample_orders(num_tasks, n_orders, cfg.get("orders_seed", 0))
+    orders = [tuple(o) for o in explicit][:n_orders]
+    for o in orders:
+        if sorted(o) != list(range(num_tasks)):
+            raise ValueError(f"task_orders entry {o} is not a permutation of 0..{num_tasks - 1}")
+    return orders
+
+
 def plan_jobs(cfg: dict, overrides: dict) -> list[dict]:
     """All jobs of an experiment; canonical duplicates of group-schedule HTCL jobs carry alias_of."""
     experiment = cfg["experiment"]
@@ -118,7 +136,7 @@ def plan_jobs(cfg: dict, overrides: dict) -> list[dict]:
                 if dataset.get("imagenet_root") and (Path(dataset["imagenet_root"]) / "PROXY.txt").exists():
                     ds_tags["proxy"] = True  # Tiny-ImageNet stand-in (scripts/make_imagenet100_proxy.py)
                 ds_label = label(dataset["name"], ds_tags)
-                orders = sample_orders(dataset["num_tasks"], n_orders, cfg.get("orders_seed", 0))
+                orders = resolve_orders(cfg, dataset["num_tasks"], n_orders)
                 for m_entry in block["methods"]:
                     for m_written, _ in expand(m_entry):
                         method = resolve_method(m_written, dataset)
@@ -132,8 +150,10 @@ def plan_jobs(cfg: dict, overrides: dict) -> list[dict]:
                             if htcl and method["name"] in NO_BUFFER_METHODS:  # HTCL adds an N-sample reservoir
                                 m_tags = {**m_written, "+replay": dataset["buffer_size"]}
                             job["dataset_label"], job["method_label"] = ds_label, label(method["name"], m_tags)
-                            # Only the group schedule with search best is invariant to the order inside a
-                            # group; online rows depend on the arrival order, so online jobs never alias.
+                            # The group schedule with search best is invariant to within-window order (it
+                            # produces bit-identical results for canonical duplicates, verified), so only one
+                            # member of each canonical class is run and the rest alias it -- a compute saver,
+                            # not a result share. Online rows depend on arrival order and never alias.
                             if htcl and htcl["schedule"] == "group" and htcl["search"] == "best":
                                 key = stable_hash([dataset, method, canonical(order, htcl["k"])])
                                 job["alias_of"] = canon_owner.setdefault(key, job["job_id"])
