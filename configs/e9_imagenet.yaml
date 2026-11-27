@@ -1,0 +1,30 @@
+# E9 ImageNet-100 (pretrained timm ViT-S/16): {ER, SER, DER, EWC, SR} +- HTCL-L2, Domain-IL.
+# imagenet_root: an ImageFolder with train/ and val/ (a Tiny-ImageNet proxy is labelled as such).
+experiment: e9_imagenet
+orders: 20
+# Paper hyperparameters (appendix Table hyperparams; DESIGN.md Datasets table). Every dataset:
+# SGD, momentum 0.9, weight decay 1e-4 (defaults in htcl/run.py), fresh optimizer per task,
+# domain scenario, dataset seed 0. samples_per_class: null = full data (paper protocol); local
+# validation runs pass --samples-per-class 50, which also caps the test set at 50 per class.
+_hp:
+  splitmnist: &splitmnist {name: splitmnist, lr: 0.01, batch_size: 64, epochs: 10, buffer_size: 50, samples_per_class: null}
+  cifar100: &cifar100 {name: cifar100, num_tasks: 10, lr: 0.1, batch_size: 32, epochs: 10, buffer_size: 500, samples_per_class: null}
+  news20: &news20 {name: news20, lr: 0.001, batch_size: 32, epochs: 10, buffer_size: 100, samples_per_class: null}
+  cora: &cora {name: cora, lr: 0.01, batch_size: full, epochs: 10, buffer_size: 50, samples_per_class: null}
+  imagenet100: &imagenet100 {name: imagenet100, imagenet_root: data/imagenet100, lr: 0.001, batch_size: 32, epochs: 5, buffer_size: 500, samples_per_class: null}
+# HTCL defaults (htcl/hierarchy.py DEFAULTS): online schedule (consolidate after every task, revise
+# the last k = 2 tasks' order on validation), lam = 1/lr of the dataset, resolved at planning time so
+# it enters the job id. J is the MEAN loss, so Fisher entries are small (SplitMNIST: median ~0, max
+# ~0.25) and the step is ~ Delta d - g/lam: lam = 1/lr makes that one SGD step from the local model.
+# lam = 1 collapsed to chance in probes (SplitMNIST, lr 0.01: lam 1 -> 50%, lam 100 -> 74.6%).
+_htcl: &htcl {k: 2}
+blocks:
+  - datasets: [*imagenet100]
+    methods:
+      - {sweep: {name: [er, ser, der, ewc, sr]}}
+      - {htcl: {k: 2, levels: 2}, sweep: {name: [er, ser, der, ewc, sr]}}
+# Class-IL column (pending decision D8): uncomment to add global labels with a 100-way head.
+#  - datasets: [{<<: *imagenet100, scenario: class}]
+#    methods:
+#      - {sweep: {name: [er, ser, der, ewc, sr]}}
+#      - {htcl: {k: 2, levels: 2}, sweep: {name: [er, ser, der, ewc, sr]}}

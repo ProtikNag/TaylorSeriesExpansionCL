@@ -1,0 +1,18 @@
+# S. Storyline (new intro Fig. 1): the final accuracy of a continual learner depends on the order in
+# which the same tasks arrive; HTCL makes it less dependent (figures/storyline.py draws both).
+# SplitMNIST, 5 tasks of 2 digits (classes_per_task 2), domain scenario (chance 50%), 500 samples per
+# class, 5 task orders drawn uniformly at random before any run (a prefix of the 20-order protocol),
+# one paper-wide training seed (htcl/run.py PAPER_SEED).
+# Families: no protection (finetune), replay (ER, DER, SER), regularization (EWC, SR), each alone and
+# with HTCL (online schedule, k = 2, L2, lam = 1/lr; hierarchy.DEFAULTS). For methods without a replay
+# buffer (finetune, EWC, SR) HTCL supplies the same N-sample buffer the replay methods hold.
+# Paper hyperparameters for SplitMNIST: lr 0.01, batch 64, 10 epochs, buffer 50; SGD momentum 0.9,
+# weight decay 1e-4 (defaults in htcl/run.py).
+experiment: storyline
+orders: 5
+datasets:
+  - {name: splitmnist, num_tasks: 5, classes_per_task: 2, lr: 0.01, batch_size: 64, epochs: 10,
+     buffer_size: 50, samples_per_class: 500, scenario: domain}
+methods:
+  - {sweep: {name: [finetune, er, der, ser, ewc, sr]}}
+  - {htcl: {k: 2, levels: 2}, sweep: {name: [finetune, er, der, ser, ewc, sr]}}

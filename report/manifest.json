@@ -1,0 +1,26 @@
+{
+  "figures": [
+    {
+      "id": "storyline",
+      "group": "intro",
+      "group_title": "Introduction",
+      "title": "The same tasks in a different order",
+      "caption": "Final accuracy of each method under 5 orders of the same 5 tasks; Δ is the best-to-worst gap in points.",
+      "details": "SplitMNIST, 5 tasks x 2 digits, domain-IL (chance 50%), MnistResNet, buffer 50, 500 samples/class, 5 random task orders, one paper-wide training seed (report/figures/storyline/storyline_stats.json).",
+      "seed": null,
+      "dataset": "SplitMNIST",
+      "model": "MnistResNet",
+      "variants": [
+        {
+          "label": "single",
+          "png": "figures/storyline/storyline.png",
+          "svg": "figures/storyline/storyline.svg",
+          "html": null
+        }
+      ],
+      "animation": null,
+      "metrics": [],
+      "created": "2026-11-26T21:22:25"
+    }
+  ]
+}

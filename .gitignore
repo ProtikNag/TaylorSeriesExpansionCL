@@ -1,0 +1,28 @@
+# Private material: never part of the anonymous release
+paper/
+reviews/
+example/
+.remember/
+graphify-out/
+
+# Data, runs, caches
+data/
+results/
+runs/
+checkpoints/
+*.pt
+*.ckpt
+__pycache__/
+*.py[cod]
+.venv/
+.idea/
+.DS_Store
+
+# Apple-licensed fonts extracted locally by report/paperfig.py (never commit)
+report/fonts/
+
+# Rendered paper pages (contain author names)
+report/verification/paper_preview/
+
+# Private term list for scripts/check_anonymity.sh
+.anonymity_terms

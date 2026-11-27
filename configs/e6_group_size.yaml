@@ -1,0 +1,23 @@
+# E6 window-size break-even: SplitMNIST, SER + HTCL-L2 (online schedule) with k = 1..5
+# (k = 1: no revision; k = 5: one revision of the whole sequence at its end).
+experiment: e6_group_size
+orders: 20
+# Paper hyperparameters (appendix Table hyperparams; DESIGN.md Datasets table). Every dataset:
+# SGD, momentum 0.9, weight decay 1e-4 (defaults in htcl/run.py), fresh optimizer per task,
+# domain scenario, dataset seed 0. samples_per_class: null = full data (paper protocol); local
+# validation runs pass --samples-per-class 50, which also caps the test set at 50 per class.
+_hp:
+  splitmnist: &splitmnist {name: splitmnist, lr: 0.01, batch_size: 64, epochs: 10, buffer_size: 50, samples_per_class: null}
+  cifar100: &cifar100 {name: cifar100, num_tasks: 10, lr: 0.1, batch_size: 32, epochs: 10, buffer_size: 500, samples_per_class: null}
+  news20: &news20 {name: news20, lr: 0.001, batch_size: 32, epochs: 10, buffer_size: 100, samples_per_class: null}
+  cora: &cora {name: cora, lr: 0.01, batch_size: full, epochs: 10, buffer_size: 50, samples_per_class: null}
+  imagenet100: &imagenet100 {name: imagenet100, imagenet_root: data/imagenet100, lr: 0.001, batch_size: 32, epochs: 5, buffer_size: 500, samples_per_class: null}
+# HTCL defaults (htcl/hierarchy.py DEFAULTS): online schedule (consolidate after every task, revise
+# the last k = 2 tasks' order on validation), lam = 1/lr of the dataset, resolved at planning time so
+# it enters the job id. J is the MEAN loss, so Fisher entries are small (SplitMNIST: median ~0, max
+# ~0.25) and the step is ~ Delta d - g/lam: lam = 1/lr makes that one SGD step from the local model.
+# lam = 1 collapsed to chance in probes (SplitMNIST, lr 0.01: lam 1 -> 50%, lam 100 -> 74.6%).
+_htcl: &htcl {k: 2}
+datasets: [*splitmnist]
+methods:
+  - {name: ser, htcl: {levels: 2}, sweep: {htcl.k: [1, 2, 3, 4, 5]}}
