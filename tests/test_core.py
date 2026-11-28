@@ -375,12 +375,14 @@ def test_noreplay_global_excludes_reservoir() -> None:
     ln.learn(steps[0])                       # process first group -> reservoir fills
     assert ln.buffer is not None and len(ln.buffer) > 0
     group_len = sum(len(ln.data.tasks[t].train) for t in steps[1])
-    assert len(ln._consolidation_data(steps[1])) == group_len  # reservoir NOT in the global consolidation
+    assert len(ln._consolidation_data(steps[1])) == group_len  # gradient data excludes the reservoir
+    assert len(ln._bn_data(steps[1])) > group_len              # but BN recalibration keeps it
 
-    le, se = build("er")                     # own buffer: kept in the consolidation data
+    le, se = build("er")                     # own buffer: kept in BOTH gradient and BN data
     le.learn(se[0])
     assert le.buffer is None and getattr(le.method, "buffer", None) is not None
-    assert len(le._consolidation_data(se[1])) > sum(len(le.data.tasks[t].train) for t in se[1])
+    g = sum(len(le.data.tasks[t].train) for t in se[1])
+    assert len(le._consolidation_data(se[1])) > g and len(le._bn_data(se[1])) > g
 
 
 def test_classes_per_task_prefix() -> None:

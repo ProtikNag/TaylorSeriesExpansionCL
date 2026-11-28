@@ -34,9 +34,12 @@ anonymous release copy before submission, and `scripts/check_anonymity.sh` skips
     `htcl_window_tasks`.
   - For methods without a buffer (finetune, EWC, SR), HTCL supplies the N-sample reservoir **only to the
     local window learner** (it needs replay to search the window without forgetting). The **global
-    (deployed) model does not train on that reservoir** — a deployed no-replay model carries no replay
-    memory; it merges toward the replay-protected local via the Taylor step, but its own consolidation
-    data is the group only. Methods with their own buffer (ER/SER/DER) keep it in the consolidation.
+    (deployed) model does not *train* on that reservoir** — a deployed no-replay model carries no replay
+    memory; its Taylor-step gradient (g, H) is computed on the group only. **BatchNorm recalibration of
+    the deployed model does still use the reservoir** — that is statistics estimation over seen tasks, not
+    gradient training, and it preserves earlier-task BN stats (without it, e.g. SR loses ~2.6 pts). The
+    gradient-group-only rule applies only to no-replay methods; methods with their own buffer (ER/SER/DER)
+    keep it in both the gradient and BN.
 - **HTCL is the group schedule (k=2), the algorithm the paper describes:**
   - The stream is split into consecutive groups of k tasks. For each group a local learner is trained
     from the persistent hierarchical model w_1, trying both orders of the pair and keeping the better one

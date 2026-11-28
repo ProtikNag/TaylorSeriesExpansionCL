@@ -417,12 +417,13 @@ class HTCL:
         if not self.levels or not cfg["consolidate"]:
             first = copy.deepcopy(local)
             if cfg["consolidate"]:  # w_1^(1) gets the same BN treatment as every later level (step 6)
-                C.recalibrate_bn(first, self._consolidation_data(group), self.device, self.hp["batch_size"])
+                C.recalibrate_bn(first, self._bn_data(group), self.device, self.hp["batch_size"])
             self.levels = [copy.deepcopy(first) for _ in range(cfg["levels"] - 1)]
             self.momentum = [[torch.zeros_like(p) for p in C.trainable(local)] for _ in self.levels]
             self.seen_samples += n_new
             return
-        data = self._consolidation_data(group)
+        data = self._consolidation_data(group)   # gradient data: group + method's own buffer only
+        bn = self._bn_data(group)                # BN-stat data: group + any buffer (reservoir included)
         target = local
         if cfg["aggregator"] == "diloco":  # target = mean of all k! local candidates
             target = copy.deepcopy(local)
@@ -446,15 +447,15 @@ class HTCL:
                 fedavg_update(level, target, self.seen_samples, n_new)
             else:
                 raise ValueError(f"unknown aggregator {cfg['aggregator']}")
-            C.recalibrate_bn(level, data, self.device, self.hp["batch_size"])
+            C.recalibrate_bn(level, bn, self.device, self.hp["batch_size"])  # BN sees the buffer
             target = level  # Delta d_i = w_{i-1}^{(t)} - w_i^{(t-1)} for i > 1
         if old_params is not None:
-            self._merge_search(old_params, local, data)
+            self._merge_search(old_params, local, bn)
         elif cfg["guard"] and cfg["aggregator"] == "taylor":
-            self._guard_consolidation(local, data)
+            self._guard_consolidation(local, bn)
         self.seen_samples += n_new
 
-    def _guard_consolidation(self, local: nn.Module, data: Dataset) -> None:
+    def _guard_consolidation(self, local: nn.Module, bn_data: Dataset) -> None:
         """Non-destructive consolidation: if the cascade left the deployed model worse on seen-task
         validation than the just-trained local model, reject it and adopt the local model at every
         level instead (BN recalibrated). This bounds HTCL below by the base learner it wraps, so a
@@ -469,11 +470,11 @@ class HTCL:
         if took_step:
             return
         kept = copy.deepcopy(local)  # reject: adopt the base learner as every level
-        C.recalibrate_bn(kept, data, self.device, self.hp["batch_size"])
+        C.recalibrate_bn(kept, bn_data, self.device, self.hp["batch_size"])
         self.levels = [copy.deepcopy(kept) for _ in self.levels]
         self.momentum = [[torch.zeros_like(p) for p in C.trainable(local)] for _ in self.levels]
 
-    def _merge_search(self, old_params: list[list[torch.Tensor]], local: nn.Module, data: Dataset) -> None:
+    def _merge_search(self, old_params: list[list[torch.Tensor]], local: nn.Module, bn_data: Dataset) -> None:
         """Step-size search for the merge. The cascade (already applied, held in self.levels) is a
         direction: candidate levels are old_i + alpha (stepped_i - old_i) for alpha in merge_grid, plus
         the local model itself at every level. Each candidate's BatchNorm is recalibrated, then its
@@ -487,7 +488,7 @@ class HTCL:
                                                  self.seen_tasks, weights=levels[-1].state_dict())))
 
         def recal(m: nn.Module) -> nn.Module:
-            C.recalibrate_bn(m, data, self.device, self.hp["batch_size"])
+            C.recalibrate_bn(m, bn_data, self.device, self.hp["batch_size"])
             return m
 
         cands = []  # (rank, label, [level modules])
@@ -516,6 +517,18 @@ class HTCL:
         carries no replay memory."""
         parts: list[Dataset] = [self.data.tasks[t].train for t in group]
         buffer = getattr(self.method, "buffer", None)  # method's own buffer only; not HTCL's reservoir
+        if buffer is not None and len(buffer) > 0:
+            parts.append(BufferDataset(buffer))
+        return ConcatDataset(parts)
+
+    def _bn_data(self, group: list[int]) -> Dataset:
+        """Data for BatchNorm recalibration of the consolidated/deployed model: the group plus ANY
+        available replay -- the method's own buffer (ER/SER/DER), else HTCL's reservoir (finetune/EWC/SR).
+        BN recalibration estimates deployment statistics over seen tasks, not gradient training, so the
+        reservoir is included even for no-replay methods (whose Taylor gradient step, `_consolidation_data`,
+        excludes it). Keeping the buffer here preserves earlier-task BN statistics in the deployed model."""
+        parts: list[Dataset] = [self.data.tasks[t].train for t in group]
+        buffer = self.buffer if self.buffer is not None else getattr(self.method, "buffer", None)
         if buffer is not None and len(buffer) > 0:
             parts.append(BufferDataset(buffer))
         return ConcatDataset(parts)
