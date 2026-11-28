@@ -143,12 +143,11 @@ The consolidation data is built from the **sorted** group, because its block ord
 
 **Curvature.** J is the **mean** cross-entropy over the consolidation data (the step's training data + buffer); g is computed over all of it. `fisher` (default) is the mean over per-sample gradients squared, computed on a seeded random subset of up to `curvature_samples` samples (default 512) with `torch.func.vmap(grad)` in memory-bounded chunks (fallback: a per-sample loop, with a warning). `hutchinson` is the diagonal Hessian estimate E[z ⊙ Hz] with Rademacher z (`hutchinson_probes`, default 4), where Hz is a forward-over-reverse product (`torch.func.jvp` of `grad`; double backward through max-pooling is unsupported on MPS); negative entries are clipped to 0 so H + λI stays positive. `identity` sets H = 0, the first-order variant (eq. firstorder). Because J is a per-sample mean, Fisher entries are small (smoke measurement on SplitMNIST: median ≈ 0, max ≈ 0.25), so H only changes (H + λI) appreciably for λ ≲ 0.1; at the default λ = 1/lr (10 to 1000) the step is close to first order.
 
-**Hyperparameter defaults** (`hierarchy.DEFAULTS`, filled into the resolved job spec so they enter the job id): schedule online (paper configs set group), levels 2, k 2, λ null = 1/lr (scalar or one value per level), curvature fisher, curvature_samples 512, aggregator taylor, search best, consolidate true, guard false, merge_search false, merge_grid {0,.25,.5,.75,1}, merge_last false, step_scale 1.0, clip_norm none, catchup none, fedprox_mu 0.01, diloco_lr 1.0, diloco_momentum 0.0.
+**Hyperparameter defaults** (`hierarchy.DEFAULTS`, filled into the resolved job spec so they enter the job id): **schedule group, merge_search true, merge_last true** (the algorithm of record — a bare `htcl: {k: 2}` runs it), levels 2, k 2, λ null = 1/lr (scalar or one value per level), curvature fisher, curvature_samples 512, aggregator taylor, search best, consolidate true, merge_grid {0,.25,.5,.75,1}, guard false (the single-jump+guard V2 ablation sets merge_search false, guard true), step_scale 1.0, clip_norm none, fedprox_mu 0.01, diloco_lr 1.0, diloco_momentum 0.0.
 
 **Model consolidated.** Only `method.model` is consolidated; a method that keeps extra networks outside `model` is not covered.
 
-**Variants**, all flags off by default:
-- `catchup: {iters, lr}` (group schedule only; rejected with `schedule: online` at planning): after w_1's Taylor step (before higher levels), recalibrate BN, then run `iters` rounds of one plain-SGD epoch on the consolidation data followed by a Taylor step from the current iterate toward the SGD result, keeping the best iterate by mean **validation** accuracy over all tasks seen so far.
+**Variants**:
 - `step_scale` (η, scalar or per level): w ← w + η · update
 - `clip_norm`: caps the global L2 norm of each level's Taylor update
 - `aggregator`:

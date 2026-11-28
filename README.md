@@ -2,17 +2,19 @@
 
 Code for the paper *Hierarchical Second-Order Consolidation for Continual Learning* (anonymous submission).
 
-HTCL learns every arriving task with a base continual learner, starting from the first hierarchical model,
-and immediately merges the local model into a hierarchy of consolidated models with the closed-form update
+HTCL wraps a base continual learner (finetune, EWC, SR, ER, SER, DER) and processes the task stream in
+consecutive **groups of k tasks** (k=2). For each group it trains a local learner from the persistent
+hierarchical model $\mathbf w_1$, trying both within-group orders and keeping the better on validation (so the
+result is invariant to within-group order), then merges $\mathbf w_1$ toward that local with the closed-form
+update
 
 $$\mathbf w_i^{(t)} = \mathbf w_i^{(t-1)} + (\mathbf H_i + \lambda_i \mathbf I)^{-1}\big(\lambda_i\,\Delta\mathbf d_i^{(t)} - \mathbf g_i\big),$$
 
-with a diagonal curvature $\mathbf H_i$ (empirical Fisher by default) and $\lambda_i = 1/\text{lr}$ by default.
-Every k tasks it revises the last window: it replays the window's tasks in every other order from a snapshot
-and keeps the order whose deployed model has the best validation accuracy on them. Every row of the accuracy
-matrix is therefore a real, up-to-date model. The original variant, which waits for a group of k tasks before
-consolidating, is kept as the `schedule: group` ablation. `docs/DESIGN.md` is the contract the
-code follows (protocol, metrics, HTCL steps, checkpointing). Read it before changing anything.
+with a diagonal curvature $\mathbf H_i$ (empirical Fisher by default) and $\lambda_i = 1/\text{lr}$. The merge
+is a step-size search: the update is a direction and HTCL keeps the $\alpha \in \{0,.25,.5,.75,1\}$ step (or
+the local) with the best accuracy on all seen tasks' validation. **`docs/ALGORITHM.md` is the full spec and
+the reason for each part; `docs/DESIGN.md` is the code contract.** The code default is this algorithm — a bare
+`htcl: {k: 2}` runs it; `schedule: online` is the one alternative schedule, kept for the R1 ablation.
 
 ## Installation
 
@@ -106,7 +108,7 @@ section to every command, including `aggregate`.
 | Buffer-size sweep (E7) | `configs/e7_buffer.yaml` | `run configs/e7_buffer.yaml --all` | `runs/e7_buffer/` |
 | Federated comparison (E8) | `configs/e8_federated.yaml` | `run configs/e8_federated.yaml --all` | `runs/e8_federated/` |
 | ImageNet-100, ViT-S/16 (E9) | `configs/e9_imagenet.yaml` | `run configs/e9_imagenet.yaml --all` | `runs/e9_imagenet/` |
-| Ablation: random order, no consolidation, first-order, group schedule (R1) | `configs/r1_ablation.yaml` | `run configs/r1_ablation.yaml --all` | `runs/r1_ablation/` |
+| Ablation: HTCL vs V1 (no merge), V2 (single jump), random order, first-order, online schedule (R1) | `configs/r1_ablation.yaml` | `run configs/r1_ablation.yaml --all` | `runs/r1_ablation/` |
 | Compute-matched repeats (R2) | `configs/r2_compute_matched.yaml` | `run configs/r2_compute_matched.yaml --all` | `runs/r2_compute_matched/` |
 | Sensitivity to λ and curvature (R3) | `configs/r3_sensitivity.yaml` | `run configs/r3_sensitivity.yaml --all` | `runs/r3_sensitivity/` |
 

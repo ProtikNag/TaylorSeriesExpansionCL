@@ -36,7 +36,7 @@ def _states_equal(a, b) -> bool:
 
 def test_revision_never_worse_than_arrival_order() -> None:
     """Every revision adopts a candidate whose validation score is at least the arrival order's."""
-    job = _job({"k": 3, "levels": 3})
+    job = _job({"k": 3, "levels": 3, "schedule": "online"})
     torch.manual_seed(job["seed"])
     learner = make_learner(job, load_data(job["dataset"]), CPU)
     for task_id in job["order"]:
@@ -53,7 +53,7 @@ def test_arrival_replay_reproduces_online_state() -> None:
     """Replaying the arrival order from the window snapshot with the seeding rule gives the online state
     bit for bit, so the arrival candidate never needs retraining. EWC also covers HTCL's own buffer."""
     for name in ("er", "ewc"):
-        job = _job({"k": 3}, name)
+        job = _job({"k": 3, "schedule": "online"}, name)
         torch.manual_seed(job["seed"])
         learner = make_learner(job, load_data(job["dataset"]), CPU)
         learner.learn([job["order"][0]])  # first window: starts from no hierarchy
@@ -67,7 +67,7 @@ def test_arrival_replay_reproduces_online_state() -> None:
 
 def test_k1_never_revises(tmp_path) -> None:
     """k = 1: no snapshot, no revision, one row per task, standard per-task learned positions."""
-    job = _job({"k": 1})
+    job = _job({"k": 1, "schedule": "online"})
     assert run_job(job, tmp_path, CPU)
     rows = json.loads((tmp_path / "acc_matrix.json").read_text())["matrices"]["main"]
     metrics = json.loads((tmp_path / "metrics.json").read_text())
@@ -78,7 +78,7 @@ def test_k1_never_revises(tmp_path) -> None:
 
 def test_resume_mid_window(tmp_path) -> None:
     """A job killed after a mid-window step (snapshot in the checkpoint) resumes to the same matrix."""
-    job = _job({"k": 3})
+    job = _job({"k": 3, "schedule": "online"})
     assert run_job(job, tmp_path / "full", CPU)
     assert not run_job(job, tmp_path / "resumed", CPU, max_steps=2)
     ckpt = torch.load(tmp_path / "resumed" / "checkpoint.pt", map_location="cpu", weights_only=False)
@@ -93,7 +93,7 @@ def test_online_jobs_never_aliased() -> None:
     """Online rows depend on the arrival order: no aliasing. The group schedule still aliases."""
     cfg = {"experiment": "t", "orders": 6, "datasets": [{"name": "cora", "lr": 0.01, "batch_size": "full",
                                                           "epochs": 1, "buffer_size": 5}],
-           "methods": [{"name": "er", "htcl": {}}, {"name": "er", "htcl": {"schedule": "group"}}]}
+           "methods": [{"name": "er", "htcl": {"schedule": "online"}}, {"name": "er", "htcl": {"schedule": "group"}}]}
     jobs = plan_jobs(cfg, {})
     online = [j for j in jobs if j["method"]["htcl"]["schedule"] == "online"]
     group = [j for j in jobs if j["method"]["htcl"]["schedule"] == "group"]
@@ -119,8 +119,7 @@ def test_lam_default_is_inverse_lr() -> None:
     assert explicit["method"]["htcl"]["lam"] == 5.0 and default["job_id"] != explicit["job_id"]
 
 
-def test_catchup_rejected_online() -> None:
-    """catchup belongs to the group schedule only."""
-    with pytest.raises(ValueError, match="catchup"):
-        _job({"catchup": {"iters": 1, "lr": 0.01}})
-    assert _job({"catchup": {"iters": 1, "lr": 0.01}, "schedule": "group"})["method"]["htcl"]["catchup"]
+def test_unknown_htcl_key_rejected() -> None:
+    """Removed/unknown htcl keys (e.g. the deleted nudge/defer/catchup) are rejected at planning time."""
+    with pytest.raises(ValueError, match="unknown htcl keys"):
+        _job({"nudge": True})

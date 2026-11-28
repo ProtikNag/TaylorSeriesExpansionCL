@@ -1,22 +1,24 @@
-"""HTCL learner: online consolidation with windowed order revision (default) or the group schedule.
+"""HTCL learner: the group schedule (the algorithm the paper describes), with the online schedule as an
+ablation. See docs/ALGORITHM.md for the algorithm and why, and docs/DESIGN.md for the code contract.
 
 Levels: `levels = L` counts the local model, so there are L-1 hierarchical models w_1..w_{L-1};
-the deployed model is w_{L-1}. See docs/DESIGN.md, HTCL section.
+the deployed model is w_{L-1}. The paper uses L=2 (local + w_1), k=2.
 
-`schedule: online` (default, one engine step per task): local <- w_1 (with the method state), train the
-arriving task, cascade the Taylor step w_1 <- local, w_i <- w_{i-1}, recalibrate BN; methods without a
-replay buffer add the task to HTCL's own N-sample reservoir. Every k tasks (a window) the learner restores
-the window's start snapshot, replays every other order of the window and adopts the best one by mean
-validation accuracy of the deployed model on the window's tasks (ties keep the arrival order). Every task's
-local training is seeded from (job seed, window, position, task, window prefix), so replaying the arrival
-order reproduces the online state exactly and is never retrained.
+`schedule: group` (default, THE algorithm; one engine step per group of k tasks):
+  1. snapshot the method state; 2. train every within-group permutation from w_1 and the snapshot, score by
+     mean validation accuracy on the group, adopt the best (first permutation wins ties) -- this gives the
+     within-window order invariance; 3. first group: every level = the local; otherwise merge level by level
+     with the closed-form Taylor step, line-searched over alpha in {0,.25,.5,.75,1} plus the local itself and
+     kept on seen-task validation (`merge_search`); 4. a final group shorter than k is merged the same way
+     (`merge_last`); 5. BN recalibration always sees the replay buffer, but the Taylor *gradient* for a
+     buffer-free method (finetune/EWC/SR) is the group only -- its injected N-sample reservoir protects the
+     local window learner (step 2), not the deployed model.
+  Ablations: `consolidate: false` deploys the searched local with no merge (V1); `merge_search: false,
+  guard: true` is the single-jump all-or-nothing merge (V2).
 
-`schedule: group` (ablation, one engine step per group of k): 1. snapshot the method state; 2. train every
-permutation of the group from w_1 and the snapshot, score by mean validation accuracy on the group (first
-permutation in lexicographic order wins ties); 3. adopt the winner's model and method state; 4. first
-group: every level = winner; 5. otherwise consolidate level by level (Taylor / DiLoCo / FedAvg / FedProx);
-6. recalibrate BN (first group included, unless consolidate is false); 7. methods without a replay buffer
-(finetune, EWC, SR): add the group's training data to HTCL's own N-sample reservoir.
+`schedule: online` (ablation, one engine step per task): local <- w_1, train the arriving task, cascade the
+Taylor step, recalibrate BN; every k tasks (a window) replay every other order from the window's start
+snapshot and adopt the best by validation. Used only in the R1 schedule-comparison ablation.
 """
 
 from __future__ import annotations
@@ -28,7 +30,6 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import ConcatDataset, Dataset
 
 from . import consolidation as C
@@ -36,31 +37,25 @@ from .buffer import ReservoirBuffer
 from .data import CLData, make_loader
 from .engine import evaluate_method, train_task
 from .methods.base import Method
-from .utils import derive_seed, rng_state, seed_everything, set_rng_state
+from .utils import derive_seed, seed_everything
 
 DEFAULTS = {
     "levels": 2,               # L, local model included: L2 = local + w_1
-    "schedule": "online",      # online (consolidate every task, revise every k) | group (ablation)
-    "k": 2,                    # revision window (online) or group size (group)
+    "schedule": "group",       # group (THE algorithm: a group of k tasks per step) | online (R1 ablation)
+    "k": 2,                    # group size (group schedule) or revision window (online ablation)
     "lam": None,               # lambda, scalar or one per hierarchical level; None = 1/lr of the dataset
     "curvature": "fisher",     # fisher | hutchinson | identity (H = 0, first-order rule)
     "curvature_samples": 512,
     "hutchinson_probes": 4,
     "aggregator": "taylor",    # taylor | diloco | fedavg | fedprox
     "search": "best",          # best | random
-    "consolidate": True,       # False: deploy the selected local model
-    "guard": False,            # True: reject a Taylor step that lowers val acc on seen tasks vs. the local model
-    "merge_search": False,     # True: treat the Taylor step as a direction and line-search alpha on seen-task val
+    "consolidate": True,       # False: deploy the selected local model (ablation V1)
+    "guard": False,            # True: all-or-nothing guard instead of the step-size search (ablation V2)
+    "merge_search": True,      # THE algorithm: treat the Taylor step as a direction and line-search alpha
     "merge_grid": [0.0, 0.25, 0.5, 0.75, 1.0],  # alpha grid for the step-size search (plus the local model)
-    "merge_last": False,       # True: merge a final group shorter than k too (needs merge_search to be safe)
-    "defer": False,            # True (online): consolidate only at window close; deploy the base learner within a window
-    "nudge": False,            # True (online): continuous global + guarded Taylor nudge toward a best-permutation local every k
-    "local_epochs": 1,         # epochs the nudge local trains per task (low, so the local stays near the global)
-    "nudge_full": False,       # nudge: deploy the searched local directly (full step) instead of a gentle Taylor step
-    "nudge_target": "window",  # nudge target: 'window' (best-perm local) | 'buffer' (order-invariant: fit the full buffer)
+    "merge_last": True,        # THE algorithm: merge a final group shorter than k too (via the step-size search)
     "step_scale": 1.0,         # eta, scalar or one per level
     "clip_norm": None,         # global L2 cap on each Taylor update
-    "catchup": None,           # {iters, lr}
     "fedprox_mu": 0.01,
     "diloco_lr": 1.0,          # with momentum 0: w_1 <- mean of the k! candidates (paper's DiLoCo variant)
     "diloco_momentum": 0.0,
@@ -81,17 +76,8 @@ def resolve(spec: dict, lr: float | None = None) -> dict:
     if unknown:
         raise ValueError(f"unknown htcl keys: {sorted(unknown)}")
     cfg = {**DEFAULTS, **spec}
-    if cfg["schedule"] not in ("online", "group"):
+    if cfg["schedule"] not in ("group", "online"):
         raise ValueError(f"unknown htcl schedule {cfg['schedule']!r}")
-    if cfg["schedule"] == "online" and cfg["catchup"] is not None:
-        raise ValueError("catchup is not part of the online schedule (use schedule: group)")
-    if cfg["nudge"]:
-        if cfg["schedule"] != "online":
-            raise ValueError("nudge requires schedule: online")
-        if cfg["defer"]:
-            raise ValueError("nudge and defer are distinct schedules; enable only one")
-        if int(cfg["levels"]) != 2:
-            raise ValueError("nudge is a global+local scheme (levels: 2)")
     if cfg["lam"] is None and lr is not None:
         cfg["lam"] = 1.0 / float(lr)
     return cfg
@@ -148,13 +134,9 @@ class HTCL:
             return self._learn_group(step)
         (task_id,) = step
         k = int(self.cfg["k"])
-        if self.cfg["nudge"]:
-            return self._learn_nudge(task_id, k)
         if not self.window and k > 1:  # the window opens: everything a revision may roll back to
             self.snapshot = copy.deepcopy(self._core_state())
         self.window.append(task_id)
-        if self.cfg["defer"]:
-            return self._learn_defer(k)
         self._online_task(self.window)
         if len(self.window) == k:
             if k > 1:
@@ -163,145 +145,6 @@ class HTCL:
             self.window_index += 1
         return {"main": [evaluate_method(self.method, self.data, "test", self.device,
                                          weights=self.levels[-1].state_dict())]}
-
-    def _learn_defer(self, k: int) -> dict[str, list[list[float]]]:
-        """Deferred consolidation: the base learner trains across the window and is deployed within it;
-        the hierarchy is updated by one Taylor step only when the window closes (every k tasks). An
-        incomplete final window is never consolidated, so no lone-task consolidation step can overshoot
-        and wipe earlier tasks. Between windows the deployed model is a stable base continual learner."""
-        self._online_task_defer(self.window)
-        if len(self.window) == k:
-            self._consolidate(list(self.window), [])  # one consolidation for the whole window
-            if k > 1 and self.cfg["search"] != "random":
-                self._revise_defer()
-            self.window, self.snapshot = [], None
-            self.window_index += 1
-            weights = self.levels[-1].state_dict()
-        else:  # mid-window: deploy the live base learner (levels may not exist yet)
-            weights = self.method.model.state_dict()
-        return {"main": [evaluate_method(self.method, self.data, "test", self.device, weights=weights)]}
-
-    def _online_task_defer(self, prefix: list[int]) -> None:
-        """Train the arriving task on the base learner, continuing across the window (rebase to w_1 only
-        at the window start). No per-task consolidation. Same seeding as `_online_task`, so replaying the
-        arrival order from the snapshot reproduces the within-window trajectory exactly."""
-        task_id = prefix[-1]
-        seed_everything(derive_seed(self.seed, self.window_index, len(prefix) - 1, task_id, list(prefix)))
-        if len(prefix) == 1 and self.levels:  # start the window from the current hierarchy
-            self.method.model.load_state_dict(self.levels[0].state_dict())
-            self.method.rebase()
-        train_task(self.method, self.data, task_id, self.hp, self.device)
-        self.seen_tasks = sorted(self.seen_tasks + [task_id])
-        if self.buffer is not None:
-            for x, y in make_loader(self.data.tasks[task_id].train, self.hp["batch_size"], shuffle=False):
-                self.buffer.add(x, y, task_id)
-
-    def _revise_defer(self) -> None:
-        """Window revision for the deferred schedule: the arrival order's state is already consolidated;
-        replay every other order from the snapshot (train the window, then one consolidation) and adopt
-        the order whose deployed model scores best on the window's validation data (ties keep arrival)."""
-        arrival = tuple(self.window)
-        scores = {arrival: self._window_score(arrival)}
-        best, best_state = arrival, copy.deepcopy(self._core_state())
-        for sigma in list(itertools.permutations(arrival))[1:]:
-            self._load_core(copy.deepcopy(self.snapshot))
-            for p in range(len(sigma)):
-                self._online_task_defer(list(sigma[:p + 1]))
-            self._consolidate(list(sigma), [])
-            scores[sigma] = self._window_score(arrival)
-            if scores[sigma] > scores[best]:
-                best, best_state = sigma, copy.deepcopy(self._core_state())
-        self._load_core(best_state)
-        self.revisions.append({"window": self.window_index, "arrival": list(arrival), "adopted": list(best),
-                               "scores": {",".join(map(str, s)): v for s, v in scores.items()}})
-
-    # ------------------------------------------------- continuous-global + nudge schedule
-    def _learn_nudge(self, task_id: int, k: int) -> dict[str, list[list[float]]]:
-        """The author's schedule. The global model trains on every task like a plain base learner (so the
-        deployed model is always current). Every k tasks a local copy of the global is trained on the best
-        permutation of the window for a few epochs (sharing the global's replay buffer), and the global
-        takes one Taylor step toward that local -- but only if it does not degrade seen-task validation
-        (a guarded nudge). A final window shorter than k is never consolidated, so no lone-task step can
-        overshoot. The window search and the nudge leave the deployed global's own trajectory intact."""
-        # No per-task reseed: the global draws from the job-start RNG stream exactly as the plain base
-        # learner does, so with no accepted nudge the global is bit-identical to the baseline.
-        train_task(self.method, self.data, task_id, self.hp, self.device)  # global trains like the baseline
-        self.seen_tasks = sorted(self.seen_tasks + [task_id])
-        self.window.append(task_id)
-        if len(self.window) == k:
-            self._nudge_consolidate(list(self.window))
-            self.window = []
-            self.window_index += 1
-        return {"main": [evaluate_method(self.method, self.data, "test", self.device,
-                                         weights=self.method.model.state_dict())]}
-
-    def _nudge_consolidate(self, window: list[int]) -> None:
-        """Best-permutation local + guarded Taylor nudge of the global toward it (see `_learn_nudge`)."""
-        rng_before = rng_state()                               # the local search must not perturb the global's
-        snap = copy.deepcopy(self.method.state_dict())          # the continuous global, its state and buffer
-        local_hp = {**self.hp, "epochs": int(self.cfg["local_epochs"])}
-        if self.cfg["nudge_target"] == "buffer":
-            self._apply_nudge(self._buffer_target(), sorted(window), window, rng_before)
-            return
-        best_score, best_local, best_sigma = -np.inf, None, None
-        sigmas = list(itertools.permutations(sorted(window)))
-        if self.cfg["search"] == "random":
-            sigmas = [sigmas[int(torch.randint(len(sigmas), (1,)))]]
-        elif self.cfg["search"] == "canonical":  # sorted window order only: no order selection -> no selection variance
-            sigmas = [tuple(sorted(window))]
-        for si, sigma in enumerate(sigmas):
-            self.method.load_state_dict(copy.deepcopy(snap))   # local starts from the global, shares its buffer
-            seed_everything(derive_seed(self.seed, self.window_index, "nudge-local", si, list(sigma)))
-            for t in sigma:
-                train_task(self.method, self.data, t, local_hp, self.device)
-            score = float(np.mean(evaluate_method(self.method, self.data, "val", self.device, list(window))))
-            if score > best_score:  # strict: the first permutation wins ties
-                best_score, best_local, best_sigma = score, copy.deepcopy(self.method.model.state_dict()), sigma
-        self.method.load_state_dict(snap)                      # restore the continuous global
-        self._apply_nudge(best_local, best_sigma, window, rng_before)
-
-    def _buffer_target(self) -> dict:
-        """Order-invariant nudge target: fine-tune a copy of the global on the FULL replay buffer (all seen
-        tasks) with plain SGD, in a deterministic order seeded by the window index only -- not the arrival
-        order. Every order's buffer holds the same tasks, so the target is (approximately) order-independent,
-        pulling every order's global toward a common solution. Returns its state_dict."""
-        buffer = self.buffer if self.buffer is not None else self.method.buffer
-        local = copy.deepcopy(self.method.model)
-        if len(buffer) == 0:
-            return local.state_dict()
-        seed_everything(derive_seed(self.seed, self.window_index, "nudge-buffer"))  # order-invariant
-        opt = torch.optim.SGD(local.parameters(), lr=self.hp["lr"], momentum=self.hp.get("momentum", 0.9),
-                              weight_decay=self.hp.get("weight_decay", 1e-4))
-        local.train()
-        for _ in range(int(self.cfg["local_epochs"])):
-            for x, y in make_loader(BufferDataset(buffer), self.hp["batch_size"], shuffle=True):
-                opt.zero_grad(set_to_none=True)
-                F.cross_entropy(local(x.to(self.device)), y.to(self.device)).backward()
-                opt.step()
-        return copy.deepcopy(local.state_dict())
-
-    def _apply_nudge(self, best_local: dict, best_sigma, window: list[int], rng_before) -> None:
-        """Guarded step of the continuous global toward `best_local`: gentle Taylor step (or a full step
-        with `nudge_full`), kept only if seen-task validation does not drop. Leaves the global's RNG intact."""
-        target = copy.deepcopy(self.method.model)
-        target.load_state_dict(best_local)
-        before = copy.deepcopy(self.method.model.state_dict())
-        before_val = float(np.mean(evaluate_method(self.method, self.data, "val", self.device, self.seen_tasks,
-                                                   weights=before)))
-        data = self._consolidation_data(window)                # window tasks + the shared replay buffer
-        if self.cfg["nudge_full"]:
-            self.method.model.load_state_dict(best_local)      # full step: deploy the target itself
-        else:
-            self._taylor(self.method.model, target, data, 0)   # g, H at the global; one gentle step toward it
-        C.recalibrate_bn(self.method.model, data, self.device, self.hp["batch_size"])
-        after_val = float(np.mean(evaluate_method(self.method, self.data, "val", self.device, self.seen_tasks,
-                                                  weights=self.method.model.state_dict())))
-        nudged = after_val >= before_val                       # guard: nudge only if it does not degrade
-        if not nudged:
-            self.method.model.load_state_dict(before)          # revert: keep the continuous global
-        self.guard_log.append({"window": self.window_index, "n_seen": len(self.seen_tasks), "took_step": nudged,
-                               "before_val": before_val, "after_val": after_val, "best_sigma": list(best_sigma)})
-        set_rng_state(rng_before)  # the local search / eval did not advance the global's RNG stream
 
     # ---------------------------------------------------------- online schedule
     def _online_task(self, prefix: list[int]) -> None:
@@ -435,8 +278,6 @@ class HTCL:
         for i, level in enumerate(self.levels):
             if cfg["aggregator"] == "taylor":
                 self._taylor(level, target, data, i)
-                if i == 0 and cfg["catchup"]:
-                    self._catchup(level, data)
             elif cfg["aggregator"] == "diloco":
                 new, self.momentum[i] = C.diloco_step(
                     [p.detach() for p in C.trainable(level)], [p.detach() for p in C.trainable(target)],
@@ -550,34 +391,6 @@ class HTCL:
                             g, h, _per_level(cfg["lam"], i), _per_level(cfg["step_scale"], i), cfg["clip_norm"])
         C.assign(level, new)
 
-    def _catchup(self, level: nn.Module, data: Dataset) -> None:
-        """Optional (off by default): `iters` rounds of one SGD epoch on the consolidation data followed
-        by a Taylor step toward it; keep the best iterate by validation accuracy on all seen tasks."""
-        iters, lr = int(self.cfg["catchup"]["iters"]), float(self.cfg["catchup"]["lr"])
-
-        def score(state: dict) -> float:
-            return float(np.mean(evaluate_method(self.method, self.data, "val", self.device, self.seen_tasks,
-                                                 weights=state)))
-
-        C.recalibrate_bn(level, data, self.device, self.hp["batch_size"])  # score the Taylor iterate fairly
-        best_state = copy.deepcopy(level.state_dict())
-        best = score(best_state)
-        for _ in range(iters):
-            sgd = copy.deepcopy(level)
-            opt = torch.optim.SGD(sgd.parameters(), lr=lr, momentum=self.hp.get("momentum", 0.9),
-                                  weight_decay=self.hp.get("weight_decay", 1e-4))
-            sgd.train()
-            for x, y in make_loader(data, self.hp["batch_size"], shuffle=True):
-                opt.zero_grad(set_to_none=True)
-                F.cross_entropy(sgd(x.to(self.device)), y.to(self.device)).backward()
-                opt.step()
-            self._taylor(level, sgd, data, 0)
-            C.recalibrate_bn(level, data, self.device, self.hp["batch_size"])
-            current = score(level.state_dict())
-            if current > best:
-                best, best_state = current, copy.deepcopy(level.state_dict())
-        level.load_state_dict(best_state)
-
     # ------------------------------------------------------------- engine API
     def finalize(self, metrics: dict) -> dict:
         """metrics.json content. htcl_window_tasks: past tasks' training data the local learner holds during
@@ -589,15 +402,15 @@ class HTCL:
             for a in alphas:
                 hist[str(a)] = hist.get(str(a), 0) + 1
             out["htcl_merge"] = {"merges": len(alphas), "alpha_hist": hist, "log": self.guard_log}
-        elif self.cfg["guard"] or self.cfg["nudge"]:  # how often the global was nudged toward the local
+        elif self.cfg["guard"]:  # V2 ablation: how often the all-or-nothing Taylor step beat the local
             taken = sum(g["took_step"] for g in self.guard_log)
             n = len(self.guard_log)
             out["htcl_guard"] = {"steps": n, "taken": taken,
-                                 "nudge_pct": round(100.0 * taken / n, 1) if n else None, "log": self.guard_log}
+                                 "accept_pct": round(100.0 * taken / n, 1) if n else None, "log": self.guard_log}
         return out
 
     def final_model_state(self) -> dict:
-        """Deployed model w_{L-1}; the base learner before the first consolidation (deferred schedule)."""
+        """Deployed model w_{L-1}; the base learner before the first consolidation."""
         return self.levels[-1].state_dict() if self.levels else self.method.model.state_dict()
 
     def _core_state(self) -> dict:

@@ -8,32 +8,29 @@ claims framing in `reviews/PLAN.md` where they differ. Read with `reviews/CONCER
 
 ## 1. The locked algorithm (what HTCL now is)
 
-HTCL is the **group schedule** (`schedule: group`, `search: best`) with three properties, two of them
-added during this revision. It is verified (code-verifier PASS) and documented in
-`pseudocode/01_htcl_group_schedule.pdf`.
+HTCL is the **group schedule** (`schedule: group`, `search: best`), and it is the **code default** — a bare
+`htcl: {k: 2}` runs it. Full spec and the supporting numbers: **`docs/ALGORITHM.md`** (verified, code-verifier
+PASS; pseudocode in `pseudocode/01_htcl_group_schedule.pdf`). The parts:
 
-- **Within-window order search (the core).** The stream is split into consecutive groups of k tasks.
-  For each group, a *local* learner is trained from the persistent hierarchical model w_1 on the k
-  tasks, trying every within-group permutation and keeping the one with the best **validation**
-  accuracy on the group. The global model is then consolidated toward that local via the closed-form
-  Taylor update w_i ← w_i + (H_i+λ_iI)^{-1}(λ_iΔd_i − g_i) (diagonal empirical Fisher, λ=1/lr).
-- **Skip-incomplete-final-group (new).** A final group of fewer than k tasks is **not** consolidated;
-  the replay-protected base-trained local is deployed directly. Consolidating a lone task overshoots
-  and catastrophically forgets earlier tasks (we observed a grouping collapse to 58.7% ACC with tasks
-  at near-chance; the acc-matrix localized it to the lone-final-group Taylor step). This fix removes it.
-- **Guard (new, `guard: true`).** A consolidation step is kept only if it does not lower seen-task
-  validation versus the local; otherwise the local is adopted. This bounds HTCL below by the base
-  learner it wraps (the honest version of the old "never worse" theory claim, C7).
-- **Replay-protected local (new).** Buffer-free base methods (finetune/EWC/SR) replay HTCL's own
-  N-sample reservoir during local training, so their local is protected from forgetting like the
-  buffered methods (ER/SER/DER) are. Without this, HTCL did not help (even regressed) for those methods.
+- **Within-window order search (the core).** The stream is split into consecutive groups of k tasks. For each
+  group a *local* learner is trained from the persistent w_1, trying every within-group permutation and keeping
+  the best on **validation** — provably invariant to within-group order (verified bit-identical).
+- **Replay-protected local.** Buffer-free methods (finetune/EWC/SR) replay HTCL's N-sample reservoir during
+  local training; replay methods (ER/SER/DER) use their own buffer. Equal memory budget N.
+- **Step-size merge (`merge_search`).** The closed-form Taylor update w_i ← w_i + (H_i+λ_iI)^{-1}(λ_iΔd_i − g_i)
+  is treated as a direction: score α·step for α ∈ {0,.25,.5,.75,1} plus the local on seen-task validation, keep
+  the best. This replaced the earlier all-or-nothing guard (now the V2 ablation): it is higher mean on 5/6
+  methods and still bounds HTCL below by the local.
+- **Merge the last group (`merge_last`).** A final short group is merged via the same search, not skipped —
+  the search absorbs the lone-task overshoot (an earlier skip-incomplete rule collapsed on adversarial orders,
+  e.g. sr `[1,4,2,3,0]`: task 2 fell 98→50; the merge recovers it).
+- **BN / gradient buffer split.** BN recalibration always sees the replay buffer (seen-task statistics); the
+  Taylor gradient for a no-replay method is the group only, so the deployed model never trains on replay.
 
-**Why this is the algorithm and not the earlier "online nudge".** We explored a continuous-global
-online schedule (the "nudge"). It does NOT have within-window invariance — the global trains tasks in
-arrival order before consolidating, so (1,2) and (2,1) give different results. The group schedule's
-local starts from the order-invariant w_1 and searches, so it is **provably invariant** to within-group
-order (verified bit-identical). The invariance is the whole point (see C15 below), so the group schedule
-is the method.
+**Why the group schedule and not the "online nudge".** We explored a continuous-global online schedule (the
+"nudge", since removed from the code). It lacks within-window invariance — the global trains tasks in arrival
+order, so (1,2) and (2,1) differ. The group schedule's local starts from the order-invariant w_1 and searches,
+so it is provably invariant (C15). The online schedule remains only as the R1 schedule-comparison ablation.
 
 ## 2. The new storyline (intro narrative + Fig. 1)
 

@@ -12,8 +12,8 @@ _hp:
   news20: &news20 {name: news20, lr: 0.001, batch_size: 32, epochs: 10, buffer_size: 100, samples_per_class: null}
   cora: &cora {name: cora, lr: 0.01, batch_size: full, epochs: 10, buffer_size: 50, samples_per_class: null}
   imagenet100: &imagenet100 {name: imagenet100, imagenet_root: data/imagenet100, lr: 0.001, batch_size: 32, epochs: 5, buffer_size: 500, samples_per_class: null}
-# HTCL defaults (htcl/hierarchy.py DEFAULTS): online schedule (consolidate after every task, revise
-# the last k = 2 tasks' order on validation), lam = 1/lr of the dataset, resolved at planning time so
+# HTCL defaults (htcl/hierarchy.py DEFAULTS): group schedule, the algorithm -- a group of k = 2 tasks
+# per step, within-group order search + step-size merge (docs/ALGORITHM.md); lam = 1/lr, resolved at planning so
 # it enters the job id. J is the MEAN loss, so Fisher entries are small (SplitMNIST: median ~0, max
 # ~0.25) and the step is ~ Delta d - g/lam: lam = 1/lr makes that one SGD step from the local model.
 # lam = 1 collapsed to chance in probes (SplitMNIST, lr 0.01: lam 1 -> 50%, lam 100 -> 74.6%).

@@ -40,15 +40,16 @@ anonymous release copy before submission, and `scripts/check_anonymity.sh` skips
     gradient training, and it preserves earlier-task BN stats (without it, e.g. SR loses ~2.6 pts). The
     gradient-group-only rule applies only to no-replay methods; methods with their own buffer (ER/SER/DER)
     keep it in both the gradient and BN.
-- **HTCL is the group schedule (k=2), the algorithm the paper describes:**
+- **HTCL is the group schedule (k=2), the algorithm the paper describes — see `docs/ALGORITHM.md`.**
+  The code default IS this algorithm (a bare `htcl: {k: 2}` runs it); everything else is an ablation.
   - The stream is split into consecutive groups of k tasks. For each group a local learner is trained
     from the persistent hierarchical model w_1, trying both orders of the pair and keeping the better one
     on validation data; finetune/EWC/SR get HTCL's N-sample reservoir replayed during local training.
-  - The global is then merged toward that local with the closed-form Taylor step, kept under a safety
-    check (guard) or a step-size search (`merge_search`) over α ∈ {0, .25, .5, .75, 1}.
-  - The online schedule (`schedule: online`, consolidate every task, revise every k) is a documented
-    ablation only. Catch-up is not part of the algorithm.
-  - λ defaults to 1/lr.
+  - The global is merged toward that local by a step-size search (`merge_search`) over α ∈ {0, .25, .5,
+    .75, 1} plus the local, kept on seen-task validation; a final short group is merged too (`merge_last`).
+    BN recalibration keeps the buffer; the Taylor gradient for a no-replay method is the group only.
+  - Ablations: `consolidate: false` (V1, no merge), `merge_search: false, guard: true` (V2, single jump),
+    `schedule: online` (R1 schedule comparison). λ defaults to 1/lr.
 - **Selection** uses the 10% validation split. Test data is for reporting only.
 - **Resumable runs.**
   - Every job checkpoints after each task (atomically, with RNG state) and writes `DONE` when finished.

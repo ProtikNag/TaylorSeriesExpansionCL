@@ -238,7 +238,8 @@ def test_group_skip_incomplete_final_group() -> None:
     cfg = {"experiment": "t", "orders": 1,
            "datasets": [{"name": "splitmnist", "samples_per_class": 6, "lr": 0.01, "batch_size": 8,
                          "epochs": 1, "buffer_size": 10}],
-           "methods": [{"name": "er", "htcl": {"k": 2, "schedule": "group", "curvature_samples": 8}}]}
+           "methods": [{"name": "er", "htcl": {"k": 2, "schedule": "group", "curvature_samples": 8,
+                                                "merge_last": False}}]}  # ablation: skip the incomplete group
     (job,) = plan_jobs(cfg, {})
     cpu = torch.device("cpu")
     torch.manual_seed(0)
@@ -260,7 +261,8 @@ def test_group_guard_logs_and_runs(tmp_path) -> None:
     cfg = {"experiment": "t", "orders": 1,
            "datasets": [{"name": "splitmnist", "samples_per_class": 6, "lr": 0.01, "batch_size": 8,
                          "epochs": 1, "buffer_size": 10}],
-           "methods": [{"name": "er", "htcl": {"k": 2, "schedule": "group", "guard": True, "curvature_samples": 8}}]}
+           "methods": [{"name": "er", "htcl": {"k": 2, "schedule": "group", "guard": True,
+                                                "merge_search": False, "curvature_samples": 8}}]}  # V2 ablation
     (job,) = plan_jobs(cfg, {})
     assert run_job(job, tmp_path / "g", torch.device("cpu"))
     metrics = json.loads((tmp_path / "g" / "metrics.json").read_text())
@@ -290,8 +292,10 @@ def _drive(job, steps_fn=None):
 def test_merge_search_alpha1_reproduces_single_jump() -> None:
     """merge_grid=[1.0] makes the only step candidate the full Taylor jump; with the tie going to the
     larger alpha it reproduces the old single jump (guard off), i.e. identical deployed weights."""
-    single = _drive(plan_jobs(_merge_cfg(guard=False), {})[0])          # old path: one closed-form jump
-    search = _drive(plan_jobs(_merge_cfg(merge_search=True, merge_grid=[1.0]), {})[0])
+    # merge_last=False -> exactly one merge (the full second group); the lone final task is skipped, so
+    # guard_log[-1] is that single consolidation in both runs.
+    single = _drive(plan_jobs(_merge_cfg(merge_search=False, guard=False, merge_last=False), {})[0])
+    search = _drive(plan_jobs(_merge_cfg(merge_search=True, merge_grid=[1.0], merge_last=False), {})[0])
     assert search.guard_log[-1]["alpha"] in (1.0, "local")
     if search.guard_log[-1]["alpha"] == 1.0:  # jump kept -> same trainable weights as the single-jump model
         # compare parameters only: _merge_search recalibrates BN per candidate (per spec), and the shuffled
@@ -332,6 +336,29 @@ def test_merge_last_flag_controls_final_group() -> None:
 
     assert count_consolidations(merge_last=False) == 2  # [a,b],[c,d] only; [e] skipped
     assert count_consolidations(merge_last=True) == 3   # [e] merged like any other group
+
+
+def test_default_group_schedule_is_the_algorithm() -> None:
+    """A bare group config (no merge flags) IS the algorithm of record: merge_search and merge_last are on
+    by default, so metrics carry htcl_merge and the final lone group is merged (3 consolidations on 5 tasks)."""
+    from htcl.engine import job_steps, load_data, make_learner, run_job
+    import tempfile
+    cfg = {"experiment": "t", "orders": 1,
+           "datasets": [{"name": "splitmnist", "samples_per_class": 6, "lr": 0.01, "batch_size": 8,
+                         "epochs": 1, "buffer_size": 10}],
+           "methods": [{"name": "er", "htcl": {"k": 2, "schedule": "group", "curvature_samples": 8}}]}
+    (job,) = plan_jobs(cfg, {})
+    assert job["method"]["htcl"]["merge_search"] and job["method"]["htcl"]["merge_last"]  # defaults resolved
+    torch.manual_seed(0)
+    learner = make_learner(job, load_data(job["dataset"]), torch.device("cpu"))
+    calls, orig = [], learner._consolidate
+    learner._consolidate = lambda g, c: (calls.append(list(g)), orig(g, c))[1]
+    for step in job_steps(job):
+        learner.learn(step)
+    assert len(calls) == 3  # [a,b],[c,d] AND the final [e] (merge_last on by default)
+    with tempfile.TemporaryDirectory() as d:
+        assert run_job(job, d + "/a", torch.device("cpu"))
+        assert "htcl_merge" in json.loads(open(d + "/a/metrics.json").read())  # merge_search on by default
 
 
 def test_memory_baseline_replays_without_htcl() -> None:

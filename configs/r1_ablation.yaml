@@ -1,9 +1,8 @@
 # R1 (C4) ablation: {SER, DER} x {SplitMNIST, CIFAR-100} x
-# {random order + Taylor, selected order + no consolidation, selected order + first-order (H = 0),
-#  group schedule (wait for k tasks, search, then consolidate), full HTCL-L2}.
-# The group row's main forgetting/BWT are on the group basis: compare it on forgetting_g2 / bwt_g2
-# (DESIGN.md, Metrics). search: random seeds each window's draw with the window's arrival order, so
-# different task orders draw independently under the single paper seed (DESIGN.md).
+# {HTCL (the algorithm), V1 no-merge, V2 single-jump+guard, random order, first-order (H=0), online schedule}.
+# See docs/ALGORITHM.md for what each flag turns off. The online row's forgetting/BWT use the standard
+# per-task definitions; the group (HTCL) rows use the group basis, so compare them on forgetting_g2 / bwt_g2
+# (DESIGN.md, Metrics). search: random seeds each group's draw so task orders draw independently.
 experiment: r1_ablation
 orders: 20
 # Paper hyperparameters (appendix Table hyperparams; DESIGN.md Datasets table). Every dataset:
@@ -16,16 +15,17 @@ _hp:
   news20: &news20 {name: news20, lr: 0.001, batch_size: 32, epochs: 10, buffer_size: 100, samples_per_class: null}
   cora: &cora {name: cora, lr: 0.01, batch_size: full, epochs: 10, buffer_size: 50, samples_per_class: null}
   imagenet100: &imagenet100 {name: imagenet100, imagenet_root: data/imagenet100, lr: 0.001, batch_size: 32, epochs: 5, buffer_size: 500, samples_per_class: null}
-# HTCL defaults (htcl/hierarchy.py DEFAULTS): online schedule (consolidate after every task, revise
-# the last k = 2 tasks' order on validation), lam = 1/lr of the dataset, resolved at planning time so
+# HTCL defaults (htcl/hierarchy.py DEFAULTS): group schedule with the step-size merge (merge_search,
+# merge_last) -- the algorithm; lam = 1/lr of the dataset, resolved at planning time so
 # it enters the job id. J is the MEAN loss, so Fisher entries are small (SplitMNIST: median ~0, max
 # ~0.25) and the step is ~ Delta d - g/lam: lam = 1/lr makes that one SGD step from the local model.
 # lam = 1 collapsed to chance in probes (SplitMNIST, lr 0.01: lam 1 -> 50%, lam 100 -> 74.6%).
 _htcl: &htcl {k: 2}
 datasets: [*splitmnist, *cifar100]
 methods:
-  - {htcl: {k: 2, levels: 2, search: random}, sweep: {name: [ser, der]}}
-  - {htcl: {k: 2, levels: 2, consolidate: false}, sweep: {name: [ser, der]}}
-  - {htcl: {k: 2, levels: 2, curvature: identity}, sweep: {name: [ser, der]}}
-  - {htcl: {k: 2, levels: 2, schedule: group}, sweep: {name: [ser, der]}}
-  - {htcl: {k: 2, levels: 2}, sweep: {name: [ser, der]}}
+  - {htcl: {k: 2}, sweep: {name: [ser, der]}}                                    # HTCL (the algorithm)
+  - {htcl: {k: 2, consolidate: false}, sweep: {name: [ser, der]}}                # V1: no merge (searched local only)
+  - {htcl: {k: 2, merge_search: false, guard: true}, sweep: {name: [ser, der]}}  # V2: single Taylor jump + guard
+  - {htcl: {k: 2, search: random}, sweep: {name: [ser, der]}}                    # no within-group order search
+  - {htcl: {k: 2, curvature: identity}, sweep: {name: [ser, der]}}               # first-order step (H = 0)
+  - {htcl: {k: 2, schedule: online}, sweep: {name: [ser, der]}}                  # online-schedule ablation

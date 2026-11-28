@@ -26,3 +26,15 @@ report/verification/paper_preview/
 
 # Private term list for scripts/check_anonymity.sh
 .anonymity_terms
+
+# scratch (never publish)
+.pytest_jid
+.vexp*_jid
+scripts/_*.py
+scripts/_*.log
+scripts/_*.sh
+scripts/_*.sbatch
+scripts/slurm/_runtests.sbatch
+scripts/slurm/pytest_cpu.sbatch
+scripts/slurm/pytest_gpu.sbatch
+scripts/slurm/setup.sbatch
