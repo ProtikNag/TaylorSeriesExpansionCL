@@ -1,0 +1,72 @@
+{
+  "acc": 18.240000000000002,
+  "forgetting": 28.362499999999997,
+  "bwt": -28.362499999999997,
+  "final_per_task": [
+    10.3,
+    10.8,
+    14.7,
+    21.5,
+    64.3,
+    15.2,
+    8.0,
+    10.5,
+    6.9,
+    20.2
+  ],
+  "group_basis": {
+    "2": {
+      "forgetting": 28.362499999999997,
+      "bwt": -28.362499999999997
+    }
+  },
+  "htcl_window_tasks": 2,
+  "htcl_revisions": [],
+  "htcl_guard": {
+    "steps": 4,
+    "taken": 3,
+    "nudge_pct": 75.0,
+    "log": [
+      {
+        "window": 0,
+        "n_seen": 4,
+        "took_step": true,
+        "cons_val": 30.25,
+        "local_val": 29.75
+      },
+      {
+        "window": 0,
+        "n_seen": 6,
+        "took_step": false,
+        "cons_val": 23.25,
+        "local_val": 23.583333333333332
+      },
+      {
+        "window": 0,
+        "n_seen": 8,
+        "took_step": true,
+        "cons_val": 20.375,
+        "local_val": 20.0
+      },
+      {
+        "window": 0,
+        "n_seen": 10,
+        "took_step": true,
+        "cons_val": 18.9,
+        "local_val": 18.85
+      }
+    ]
+  },
+  "learned_pos": {
+    "7": 1,
+    "8": 1,
+    "6": 3,
+    "9": 3,
+    "5": 5,
+    "0": 5,
+    "2": 7,
+    "1": 7,
+    "3": 9,
+    "4": 9
+  }
+}

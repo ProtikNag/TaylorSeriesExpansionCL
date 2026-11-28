@@ -1,0 +1,41 @@
+{
+  "acc": 60.44000000000001,
+  "forgetting": 21.575000000000003,
+  "bwt": -21.575000000000003,
+  "final_per_task": [
+    58.3,
+    49.3,
+    49.7,
+    48.3,
+    96.6
+  ],
+  "group_basis": {
+    "2": {
+      "forgetting": 21.575000000000003,
+      "bwt": -21.575000000000003
+    }
+  },
+  "htcl_window_tasks": 2,
+  "htcl_revisions": [],
+  "htcl_guard": {
+    "steps": 1,
+    "taken": 1,
+    "nudge_pct": 100.0,
+    "log": [
+      {
+        "window": 0,
+        "n_seen": 4,
+        "took_step": true,
+        "cons_val": 50.0,
+        "local_val": 48.5
+      }
+    ]
+  },
+  "learned_pos": {
+    "0": 1,
+    "1": 1,
+    "2": 3,
+    "3": 3,
+    "4": 4
+  }
+}

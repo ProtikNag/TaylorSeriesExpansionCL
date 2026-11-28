@@ -1,0 +1,33 @@
+{
+  "experiment": "_scale_mnist",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "splitmnist",
+    "num_tasks": 5,
+    "classes_per_task": 2,
+    "lr": 0.01,
+    "batch_size": 64,
+    "epochs": 10,
+    "buffer_size": 50,
+    "samples_per_class": 500
+  },
+  "method": {
+    "name": "finetune"
+  },
+  "order": [
+    1,
+    0,
+    2,
+    3,
+    4
+  ],
+  "order_index": 2,
+  "seed": 0,
+  "job_id": "f47577e4cb1a",
+  "dataset_label": "splitmnist",
+  "method_label": "finetune"
+}

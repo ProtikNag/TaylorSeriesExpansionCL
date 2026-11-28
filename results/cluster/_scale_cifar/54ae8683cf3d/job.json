@@ -1,0 +1,39 @@
+{
+  "experiment": "_scale_cifar",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "cifar100",
+    "num_tasks": 10,
+    "lr": 0.1,
+    "batch_size": 32,
+    "epochs": 10,
+    "buffer_size": 500,
+    "samples_per_class": 200
+  },
+  "method": {
+    "alpha": 0.5,
+    "beta": 0.0,
+    "name": "der"
+  },
+  "order": [
+    7,
+    2,
+    1,
+    8,
+    4,
+    0,
+    5,
+    9,
+    3,
+    6
+  ],
+  "order_index": 14,
+  "seed": 0,
+  "job_id": "54ae8683cf3d",
+  "dataset_label": "cifar100",
+  "method_label": "der"
+}
