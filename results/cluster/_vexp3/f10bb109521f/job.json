@@ -1,0 +1,69 @@
+{
+  "experiment": "_vexp3",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "splitmnist",
+    "num_tasks": 5,
+    "classes_per_task": 2,
+    "lr": 0.01,
+    "batch_size": 64,
+    "epochs": 10,
+    "buffer_size": 50,
+    "samples_per_class": 500
+  },
+  "method": {
+    "alpha": 0.5,
+    "beta": 0.0,
+    "htcl": {
+      "levels": 2,
+      "schedule": "group",
+      "k": 2,
+      "lam": 100.0,
+      "curvature": "fisher",
+      "curvature_samples": 512,
+      "hutchinson_probes": 4,
+      "aggregator": "taylor",
+      "search": "best",
+      "consolidate": true,
+      "guard": false,
+      "merge_search": true,
+      "merge_grid": [
+        0.0,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "merge_last": true,
+      "defer": false,
+      "nudge": false,
+      "local_epochs": 1,
+      "nudge_full": false,
+      "nudge_target": "window",
+      "step_scale": 1.0,
+      "clip_norm": null,
+      "catchup": null,
+      "fedprox_mu": 0.01,
+      "diloco_lr": 1.0,
+      "diloco_momentum": 0.0
+    },
+    "name": "der"
+  },
+  "order": [
+    0,
+    2,
+    1,
+    3,
+    4
+  ],
+  "order_index": 4,
+  "seed": 0,
+  "job_id": "f10bb109521f",
+  "dataset_label": "splitmnist",
+  "method_label": "der|htcl.k=2|htcl.levels=2|htcl.merge_last=True|htcl.merge_search=True|htcl.schedule=group",
+  "alias_of": null
+}
