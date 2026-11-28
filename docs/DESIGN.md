@@ -14,7 +14,7 @@ htcl/
   metrics.py        # ACC, forgetting, BWT, per-task stats, aggregation across orders
   permutations.py   # order sampling, canonicalization, dedup
   consolidation.py  # Taylor update (eq. hier_update), Fisher / Hutchinson curvature, first-order, DiLoCo
-  hierarchy.py      # HTCL wrapper: online consolidation + windowed order revision (default), group schedule
+  hierarchy.py      # HTCL wrapper: group schedule (the algorithm; merge guard / step-size search), online ablation
   methods/
     __init__.py     # registry: name -> "module:Class", resolved lazily with importlib
     base.py         # Method interface
@@ -64,6 +64,7 @@ A job is (experiment name, method spec, dataset spec, order, order index). `job_
   - `DONE`: marker file
 - **Accuracies** are percentages (0–100) everywhere.
 - **Steps.** The engine iterates over *steps*: one task for baselines and HTCL's online schedule, one group of k tasks for HTCL's group schedule. A task counts as learned at the last position of its step (`learned_pos`, written to `metrics.json`).
+- **Memory without HTCL (baseline control).** A method spec with `memory: true` gives a buffer-free method (finetune/EWC/SR) an N-sample reservoir (N = dataset `buffer_size`) that is replayed into each task's training stream — the same memory HTCL hands those methods, but with no hierarchy. It is a method option on the plain `Sequential` learner (not a new method, not HTCL); the reservoir is checkpointed, and the row is labelled `+mem=N` with its own job id. This isolates the replay memory from the schedule.
 - **Compute-matched repeats (R2).** A method spec with `repeats: n` trains n copies of the baseline from the same initialisation in lockstep; repeat r trains task t after reseeding with `hash(job seed, r, t)`. After every task the engine records rows for each repeat, the weight average (`wavg`: mean weights, BN statistics recalibrated as for HTCL over the current task's training data plus repeat 0's buffer) and the logit ensemble (`ens`). `metrics.json` then holds `variants` {`best_val` (repeat with the best final mean validation accuracy), `mean` (mean of the repeats' metrics), `wavg`, `ens`} plus the per-repeat metrics, and `aggregate` emits one row per variant.
 - **Checkpoint.** Written after every step. It holds model(s), method state (buffer, EWC anchors, …), for online HTCL the open window, its index and its snapshot S (so a job killed mid-window resumes bit-identically on CPU), the next step, the partial accuracy matrix, per-step timings, and RNG states for python, numpy, torch and the device. It is loaded with `map_location="cpu"`: `Method.load_state_dict` receives CPU tensors and moves what it needs to the device.
 - **Resume.** A job with `DONE` is skipped. A job with `checkpoint.pt` restores everything and continues. A resumed job must give the same final metrics as an uninterrupted one on CPU (checked bitwise on CPU and MPS for every method). On CUDA, `seed_everything` sets cuDNN deterministic (benchmark off), `CUBLAS_WORKSPACE_CONFIG=:4096:8` and `torch.use_deterministic_algorithms(True, warn_only=True)`; ops without a deterministic kernel (torch_geometric's scatter in the Cora GCN, `scatter_reduce` in iCaRL's NME scores) only warn, so CUDA reruns and resumes agree within floating-point nondeterminism (not bitwise) on those paths.
@@ -96,7 +97,7 @@ Notation from the paper:
 - **TaylorStep**(w_i toward target): Δd = target − w_i; g_i, H_i at w_i, computed on the consolidation data (the task(s) just learned plus the replay buffer) in **eval mode** (no BN stat updates); w_i ← w_i + (H_i + λ_i I)^{-1}(λ_i Δd − g_i), elementwise with diagonal H. After each level's update its BN statistics are recalibrated: reset the running stats and run forward passes in train mode with `no_grad` over the same consolidation data, **shuffled** (the data is a concatenation of task blocks; task-homogeneous batches would miss the between-task variance) with the incomplete trailing batch dropped, so the cumulative average weights batches equally.
 - The very first consolidation initializes every level to the local model with BN recalibrated (unless `consolidate: false`). Otherwise w_1 would keep the local model's training EMA, which after a short first task is far from converged (CIFAR-100, spc 10, 1 epoch: |g| at w_1 = 8.3e4 with the EMA against 7.9 recalibrated) and made the next Taylor step diverge.
 
-### Online schedule (`schedule: online`, the algorithm)
+### Online schedule (`schedule: online`, documented ablation)
 
 The learner never waits for a group: every arriving task is learned and consolidated at once, so every row of the accuracy matrix is a real, up-to-date deployed model. Every k tasks (a *window*) the learner revises the window by replaying it in the best order. One engine step per task t:
 
@@ -119,9 +120,9 @@ Tasks left in an incomplete window at the end of the sequence are not revised. `
 
 **λ default.** `lam: null` (default) resolves at planning time to 1/lr of the dataset, so the number is in the job spec and the job id. With H ≈ 0 the update reduces to Δd − g/λ, so λ = 1/lr makes the curvature-free limit one SGD step from the local model. λ = 1 collapsed to chance in probes (SplitMNIST, lr 0.01: λ 1 → 50%, λ 100 → 74.6%). Configs that set `lam` keep their value.
 
-### Group schedule (`schedule: group`, ablation)
+### Group schedule (`schedule: group`, the algorithm the paper describes)
 
-The original procedure: the learner waits for a group G_t of k consecutive tasks (the last group may be smaller), and the deployed model only changes at group ends. One engine step per group:
+The algorithm of record (k=2). The learner waits for a group G_t of k consecutive tasks (the last group may be smaller), and the deployed model only changes at group ends. All paper configs set `schedule: group` explicitly; the code default stays `online` for back-compatible ablations. One engine step per group:
 
 1. Snapshot the method state at the group start (buffer, EWC anchors, etc.).
 2. **Local search.** For each permutation σ of the group's tasks (sorted, lexicographic): deep-copy w_1^{(t-1)} and the method state snapshot, `method.rebase()`, train sequentially on σ with the base method, score A^σ = mean validation accuracy of the local model over the group's tasks. Ties are broken by first σ.
@@ -132,9 +133,17 @@ The original procedure: the learner waits for a group G_t of k consecutive tasks
 
 The consolidation data is built from the **sorted** group, because its block order drives BN recalibration's shuffle and the Fisher subset. With that, the group schedule with `search: best` is invariant to the order inside a group (tested: two canonically equal orders give identical matrices), so its canonical duplicates are aliased (Permutations).
 
+**Replay-protected local.** Buffer-free base methods (finetune, EWC, SR) replay HTCL's own N-sample reservoir during local training (step 2), so their local is protected from forgetting earlier groups like the buffered methods (ER/SER/DER) are. Without this HTCL did not help those methods.
+
+**Merge of the cascade into the hierarchy** — one of two mutually exclusive policies on the Taylor step:
+- `guard: true` (the shipped default behaviour): keep the whole cascade only if the deployed model's seen-task validation is not below the local's; otherwise adopt the local at every level (the "never worse than base" property, C7). All-or-nothing.
+- `merge_search: true`: treat the cascade as a *direction*. Candidate levels are w_old + α·(w_stepped − w_old) for α in `merge_grid` (default {0, .25, .5, .75, 1}), plus the local model itself. Each candidate's BN is recalibrated, then its deployed model is scored on seen-task validation; the best wins, ties go to the larger α (the local candidate ranks below α=0). `merge_grid: [1.0]` with the tie rule reproduces the single Taylor jump. The chosen α (or `"local"`) per merge is logged in `metrics.json` under `htcl_merge` (`alpha_hist`, `log`).
+
+**Incomplete final group.** A final group shorter than k is, by default, *not* merged (`merge_last: false`): consolidating a lone task overshoots and wipes earlier tasks, so the replay-protected base-trained local is deployed directly. `merge_last: true` merges it like any other group (safe only with `merge_search`, whose α=0/local candidates absorb the overshoot).
+
 **Curvature.** J is the **mean** cross-entropy over the consolidation data (the step's training data + buffer); g is computed over all of it. `fisher` (default) is the mean over per-sample gradients squared, computed on a seeded random subset of up to `curvature_samples` samples (default 512) with `torch.func.vmap(grad)` in memory-bounded chunks (fallback: a per-sample loop, with a warning). `hutchinson` is the diagonal Hessian estimate E[z ⊙ Hz] with Rademacher z (`hutchinson_probes`, default 4), where Hz is a forward-over-reverse product (`torch.func.jvp` of `grad`; double backward through max-pooling is unsupported on MPS); negative entries are clipped to 0 so H + λI stays positive. `identity` sets H = 0, the first-order variant (eq. firstorder). Because J is a per-sample mean, Fisher entries are small (smoke measurement on SplitMNIST: median ≈ 0, max ≈ 0.25), so H only changes (H + λI) appreciably for λ ≲ 0.1; at the default λ = 1/lr (10 to 1000) the step is close to first order.
 
-**Hyperparameter defaults** (`hierarchy.DEFAULTS`, filled into the resolved job spec so they enter the job id): schedule online, levels 2, k 2, λ null = 1/lr (scalar or one value per level), curvature fisher, curvature_samples 512, aggregator taylor, search best, consolidate true, step_scale 1.0, clip_norm none, catchup none, fedprox_mu 0.01, diloco_lr 1.0, diloco_momentum 0.0.
+**Hyperparameter defaults** (`hierarchy.DEFAULTS`, filled into the resolved job spec so they enter the job id): schedule online (paper configs set group), levels 2, k 2, λ null = 1/lr (scalar or one value per level), curvature fisher, curvature_samples 512, aggregator taylor, search best, consolidate true, guard false, merge_search false, merge_grid {0,.25,.5,.75,1}, merge_last false, step_scale 1.0, clip_norm none, catchup none, fedprox_mu 0.01, diloco_lr 1.0, diloco_momentum 0.0.
 
 **Model consolidated.** Only `method.model` is consolidated; a method that keeps extra networks outside `model` is not covered.
 

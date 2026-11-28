@@ -9,12 +9,17 @@ cluster). Read `CLAUDE.md` (project rules), this file, `README.md`, `docs/DESIGN
 - **The code was rebuilt from scratch on this branch.** An audit of the old code found that ER, SER and
   DER were not continual learning (the epoch loop ran outside the task loop), HTCL always ran ER locally,
   forgetting was never computed, and model selection used test data. None of the old numbers are reused.
-- **HTCL now uses the online schedule** (`schedule: online`, the default):
-  - Every arriving task is learned by the base method from w_1 and consolidated into the hierarchy at
-    once, so every accuracy-matrix row comes from an up-to-date model.
-  - Every k tasks the last window is replayed from a snapshot in every other order, and the order with
-    the best *validation* accuracy is kept (ties go to the arrival order).
-  - The old group schedule is the `schedule: group` ablation. Catch-up is not part of the algorithm.
+- **HTCL is the group schedule, k=2** (`schedule: group`) — the algorithm the paper describes. All paper
+  configs set it explicitly (the code default `schedule: online` is kept only for the ablation):
+  - The stream is split into consecutive groups of k tasks. For each group a local learner trains from
+    the persistent model w_1, trying both orders of the pair and keeping the better one on *validation*
+    data (bit-identical for within-group-reshuffled orders — the within-window invariance, C15).
+    finetune/EWC/SR get HTCL's N-sample reservoir replayed during local training.
+  - The global is merged toward that local by the closed-form Taylor step, kept under either a safety
+    check (`guard`) or a step-size search (`merge_search`: pick α ∈ {0,.25,.5,.75,1} or the local on
+    seen-task validation; `merge_last` merges a final short group too). The online schedule
+    (`schedule: online`, consolidate every task, revise every k) is a documented ablation.
+  - Catch-up is not part of the algorithm.
 - **Tests and smoke:** `pytest -q tests/` passes, and every config passes a CPU/MPS smoke run.
 - **Storyline (intro Fig. 1):**
   - Configuration: SplitMNIST, 5 tasks of 2 digits, 500 samples per class, 5 task orders, six methods,

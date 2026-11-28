@@ -50,6 +50,9 @@ DEFAULTS = {
     "search": "best",          # best | random
     "consolidate": True,       # False: deploy the selected local model
     "guard": False,            # True: reject a Taylor step that lowers val acc on seen tasks vs. the local model
+    "merge_search": False,     # True: treat the Taylor step as a direction and line-search alpha on seen-task val
+    "merge_grid": [0.0, 0.25, 0.5, 0.75, 1.0],  # alpha grid for the step-size search (plus the local model)
+    "merge_last": False,       # True: merge a final group shorter than k too (needs merge_search to be safe)
     "defer": False,            # True (online): consolidate only at window close; deploy the base learner within a window
     "nudge": False,            # True (online): continuous global + guarded Taylor nudge toward a best-permutation local every k
     "local_epochs": 1,         # epochs the nudge local trains per task (low, so the local stays near the global)
@@ -388,7 +391,7 @@ class HTCL:
         # A final group of fewer than k tasks is never consolidated (the consolidation step on a lone task
         # overshoots and wipes earlier tasks); instead the base-trained local -- which replay keeps healthy
         # -- is deployed directly. Only a full group of k tasks is consolidated into the hierarchy.
-        if self.levels and len(group) < int(cfg["k"]):
+        if self.levels and len(group) < int(cfg["k"]) and not cfg["merge_last"]:
             self.levels = [copy.deepcopy(self.method.model) for _ in self.levels]
         else:
             # Canonical (sorted) group: the consolidation data's block order drives BN recalibration's shuffle
@@ -424,6 +427,10 @@ class HTCL:
         if cfg["aggregator"] == "diloco":  # target = mean of all k! local candidates
             target = copy.deepcopy(local)
             target.load_state_dict(C.average_states(candidates))
+        # merge_search: snapshot each level's weights before the step, so the cascade result becomes a
+        # direction we line-search along (old + alpha * (stepped - old)).
+        old_params = ([[p.detach().clone() for p in C.trainable(lv)] for lv in self.levels]
+                      if cfg["merge_search"] and cfg["aggregator"] == "taylor" else None)
         for i, level in enumerate(self.levels):
             if cfg["aggregator"] == "taylor":
                 self._taylor(level, target, data, i)
@@ -441,7 +448,9 @@ class HTCL:
                 raise ValueError(f"unknown aggregator {cfg['aggregator']}")
             C.recalibrate_bn(level, data, self.device, self.hp["batch_size"])
             target = level  # Delta d_i = w_{i-1}^{(t)} - w_i^{(t-1)} for i > 1
-        if cfg["guard"] and cfg["aggregator"] == "taylor":
+        if old_params is not None:
+            self._merge_search(old_params, local, data)
+        elif cfg["guard"] and cfg["aggregator"] == "taylor":
             self._guard_consolidation(local, data)
         self.seen_samples += n_new
 
@@ -463,6 +472,41 @@ class HTCL:
         C.recalibrate_bn(kept, data, self.device, self.hp["batch_size"])
         self.levels = [copy.deepcopy(kept) for _ in self.levels]
         self.momentum = [[torch.zeros_like(p) for p in C.trainable(local)] for _ in self.levels]
+
+    def _merge_search(self, old_params: list[list[torch.Tensor]], local: nn.Module, data: Dataset) -> None:
+        """Step-size search for the merge. The cascade (already applied, held in self.levels) is a
+        direction: candidate levels are old_i + alpha (stepped_i - old_i) for alpha in merge_grid, plus
+        the local model itself at every level. Each candidate's BatchNorm is recalibrated, then its
+        deployed model (levels[-1]) is scored on seen-task validation. The best wins; ties go to the
+        larger alpha (the local candidate ranks below alpha=0). With merge_grid=[1.0] the alpha=1
+        candidate is exactly the single Taylor jump. The chosen alpha (or "local") is logged per merge."""
+        stepped = [[p.detach().clone() for p in C.trainable(lv)] for lv in self.levels]
+
+        def deployed_val(levels: list[nn.Module]) -> float:
+            return float(np.mean(evaluate_method(self.method, self.data, "val", self.device,
+                                                 self.seen_tasks, weights=levels[-1].state_dict())))
+
+        def recal(m: nn.Module) -> nn.Module:
+            C.recalibrate_bn(m, data, self.device, self.hp["batch_size"])
+            return m
+
+        cands = []  # (rank, label, [level modules])
+        for alpha in self.cfg["merge_grid"]:
+            a = float(alpha)
+            levels = []
+            for lv, old_p, st_p in zip(self.levels, old_params, stepped):
+                m = copy.deepcopy(lv)
+                C.assign(m, [o * (1.0 - a) + s * a for o, s in zip(old_p, st_p)])
+                levels.append(recal(m))
+            cands.append((a, a, levels))
+        cands.append((-1.0, "local", [recal(copy.deepcopy(local)) for _ in self.levels]))  # local ranks lowest
+
+        scored = [(deployed_val(levels), rank, label, levels) for rank, label, levels in cands]
+        _, _, best_label, best_levels = max(scored, key=lambda t: (t[0], t[1]))  # tie -> larger alpha
+        self.levels = [copy.deepcopy(m) for m in best_levels]
+        self.momentum = [[torch.zeros_like(p) for p in C.trainable(local)] for _ in self.levels]
+        self.guard_log.append({"window": self.window_index, "n_seen": len(self.seen_tasks), "alpha": best_label,
+                               "scores": {str(lab): round(sc, 4) for sc, _, lab, _ in scored}})
 
     def _consolidation_data(self, group: list[int]) -> Dataset:
         """Current group's training data plus the replay buffer (the method's, else HTCL's own)."""
@@ -522,7 +566,13 @@ class HTCL:
         """metrics.json content. htcl_window_tasks: past tasks' training data the local learner holds during
         a window or group (training-time memory only; the deployed replay buffer stays N)."""
         out = {**metrics["main"], "htcl_window_tasks": int(self.cfg["k"]), "htcl_revisions": self.revisions}
-        if self.cfg["guard"] or self.cfg["nudge"]:  # how often the global was nudged toward the local
+        if self.cfg["merge_search"]:  # step-size search: which alpha (or the local model) each merge chose
+            alphas = [g["alpha"] for g in self.guard_log if "alpha" in g]
+            hist: dict[str, int] = {}
+            for a in alphas:
+                hist[str(a)] = hist.get(str(a), 0) + 1
+            out["htcl_merge"] = {"merges": len(alphas), "alpha_hist": hist, "log": self.guard_log}
+        elif self.cfg["guard"] or self.cfg["nudge"]:  # how often the global was nudged toward the local
             taken = sum(g["took_step"] for g in self.guard_log)
             n = len(self.guard_log)
             out["htcl_guard"] = {"steps": n, "taken": taken,

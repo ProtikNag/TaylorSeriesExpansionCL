@@ -1,0 +1,39 @@
+# Algorithm-decision experiment (author steps 6-7). SplitMNIST, same 20 orders as the storyline, k=2, one seed.
+#   V1 = HTCL, merge off (consolidate: false)        -> best-order local, no Taylor step
+#   V3 = HTCL, step-size search + merge the last task (merge_search + merge_last)
+#   V4 = finetune/EWC/SR with memory, no HTCL        -> N-sample reservoir replay, plain Sequential
+# base and V2 (HTCL single-jump + guard + skip-last) are read from the existing _intended / _scale_mnist_nr runs.
+experiment: _vexp
+orders: 20
+task_orders:
+  - [0, 1, 2, 3, 4]
+  - [0, 1, 3, 2, 4]
+  - [1, 0, 2, 3, 4]
+  - [1, 0, 3, 2, 4]
+  - [0, 2, 1, 3, 4]
+  - [0, 2, 3, 1, 4]
+  - [2, 0, 1, 3, 4]
+  - [2, 0, 3, 1, 4]
+  - [1, 3, 0, 4, 2]
+  - [1, 3, 4, 0, 2]
+  - [3, 1, 0, 4, 2]
+  - [3, 1, 4, 0, 2]
+  - [2, 4, 0, 3, 1]
+  - [2, 4, 3, 0, 1]
+  - [4, 2, 0, 3, 1]
+  - [4, 2, 3, 0, 1]
+  - [1, 4, 2, 3, 0]
+  - [1, 4, 3, 2, 0]
+  - [4, 1, 2, 3, 0]
+  - [4, 1, 3, 2, 0]
+datasets:
+  - {name: splitmnist, num_tasks: 5, classes_per_task: 2, lr: 0.01, batch_size: 64, epochs: 10,
+     buffer_size: 50, samples_per_class: 500, scenario: domain}
+methods:
+  # V1: HTCL with the merge switched off
+  - {htcl: {schedule: group, k: 2, levels: 2, consolidate: false}, sweep: {name: [finetune, er, der, ser, ewc, sr]}}
+  # V3: HTCL with the step-size search and the last task merged
+  - {htcl: {schedule: group, k: 2, levels: 2, merge_search: true, merge_last: true},
+     sweep: {name: [finetune, er, der, ser, ewc, sr]}}
+  # V4: memory, no HTCL (buffer-free methods only; ER/SER/DER already carry a buffer so their V4 == base)
+  - {memory: true, sweep: {name: [finetune, ewc, sr]}}

@@ -149,6 +149,9 @@ def plan_jobs(cfg: dict, overrides: dict) -> list[dict]:
                             m_tags = m_written
                             if htcl and method["name"] in NO_BUFFER_METHODS:  # HTCL adds an N-sample reservoir
                                 m_tags = {**m_written, "+replay": dataset["buffer_size"]}
+                            elif method.get("memory") and method["name"] in NO_BUFFER_METHODS:  # memory, no HTCL
+                                m_tags = {**{k: v for k, v in m_written.items() if k != "memory"},
+                                          "+mem": dataset["buffer_size"]}
                             job["dataset_label"], job["method_label"] = ds_label, label(method["name"], m_tags)
                             # The group schedule with search best is invariant to within-window order (it
                             # produces bit-identical results for canonical duplicates, verified), so only one

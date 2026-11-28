@@ -97,20 +97,32 @@ def make_method(job: dict, data: CLData, device: torch.device) -> Method:
     """Instantiate the job's method on a fresh model."""
     spec = job["method"]
     cfg = {**job["dataset"], "num_outputs": data.num_outputs, "num_tasks": len(data.tasks),
-           **{k: v for k, v in spec.items() if k not in ("name", "htcl", "repeats")}}
+           **{k: v for k, v in spec.items() if k not in ("name", "htcl", "repeats", "memory")}}
     return get_method(spec["name"])(build_model(data), cfg, device)
 
 
 class Sequential:
-    """Plain baseline: one task per step, the trained model is the deployed model."""
+    """Plain baseline: one task per step, the trained model is the deployed model.
 
-    def __init__(self, method: Method, data: CLData, hp: dict, device: torch.device):
-        """Wrap a method."""
+    `memory=N` gives a buffer-free method (finetune/EWC/SR) an N-sample reservoir that is replayed into
+    each task's training stream -- the same N-sample memory HTCL hands those methods, but with no
+    hierarchy. This is the "memory without HTCL" control (isolates the replay memory from the schedule)."""
+
+    def __init__(self, method: Method, data: CLData, hp: dict, device: torch.device, memory: int = 0):
+        """Wrap a method; if `memory` > 0 and the method has no buffer of its own, add a reservoir."""
         self.method, self.data, self.hp, self.device = method, data, hp, device
+        from .buffer import ReservoirBuffer
+        self.buffer = ReservoirBuffer(memory) if memory and getattr(method, "buffer", None) is None else None
 
     def learn(self, step: list[int]) -> dict[str, list[list[float]]]:
-        """Train the step's task and evaluate on every task's test set."""
-        train_task(self.method, self.data, step[0], self.hp, self.device)
+        """Train the step's task (replaying the reservoir if any) and evaluate on every task's test set."""
+        from .hierarchy import BufferDataset
+        task_id = step[0]
+        replay = BufferDataset(self.buffer) if self.buffer is not None and len(self.buffer) > 0 else None
+        train_task(self.method, self.data, task_id, self.hp, self.device, replay=replay)
+        if self.buffer is not None:  # grow the reservoir after training, so this task was replay-free
+            for x, y in make_loader(self.data.tasks[task_id].train, self.hp["batch_size"], shuffle=False):
+                self.buffer.add(x, y, task_id)
         return {"main": [evaluate_method(self.method, self.data, "test", self.device)]}
 
     def finalize(self, metrics: dict) -> dict:
@@ -122,12 +134,17 @@ class Sequential:
         return self.method.model.state_dict()
 
     def state_dict(self) -> dict:
-        """Method state."""
-        return {"method": self.method.state_dict()}
+        """Method state (and the reservoir, if any)."""
+        s = {"method": self.method.state_dict()}
+        if self.buffer is not None:
+            s["buffer"] = self.buffer.state_dict()
+        return s
 
     def load_state_dict(self, state: dict) -> None:
-        """Restore method state."""
+        """Restore method state (and the reservoir, if any)."""
         self.method.load_state_dict(state["method"])
+        if self.buffer is not None and state.get("buffer") is not None:
+            self.buffer.load_state_dict(state["buffer"])
 
 
 class Repeats:
@@ -213,7 +230,10 @@ def make_learner(job: dict, data: CLData, device: torch.device):
         return HTCL(method, data, job["dataset"], spec["htcl"], device, job["seed"])
     if spec.get("repeats"):
         return Repeats(method, data, job["dataset"], device, int(spec["repeats"]), job["seed"])
-    return Sequential(method, data, job["dataset"], device)
+    memory = int(spec["memory"]) if spec.get("memory") else 0  # memory=true -> dataset buffer_size
+    if spec.get("memory") is True:
+        memory = int(job["dataset"]["buffer_size"])
+    return Sequential(method, data, job["dataset"], device, memory=memory)
 
 
 def group_k(job: dict) -> int | None:

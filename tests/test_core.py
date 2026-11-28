@@ -268,6 +268,94 @@ def test_group_guard_logs_and_runs(tmp_path) -> None:
     assert g["steps"] >= 1 and 0 <= g["taken"] <= g["steps"]  # one decision per full group, logged
 
 
+def _merge_cfg(**htcl_extra):
+    return {"experiment": "t", "orders": 1,
+            "datasets": [{"name": "splitmnist", "samples_per_class": 6, "lr": 0.01, "batch_size": 8,
+                          "epochs": 1, "buffer_size": 10}],
+            "methods": [{"name": "er", "htcl": {"k": 2, "schedule": "group", "curvature_samples": 8,
+                                                **htcl_extra}}]}
+
+
+def _drive(job, steps_fn=None):
+    """Build a learner, run every step with a fixed seed, return it."""
+    from htcl.engine import job_steps, load_data, make_learner
+    torch.manual_seed(0)
+    learner = make_learner(job, load_data(job["dataset"]), torch.device("cpu"))
+    for step in job_steps(job):
+        torch.manual_seed(100 + step[0])
+        learner.learn(step)
+    return learner
+
+
+def test_merge_search_alpha1_reproduces_single_jump() -> None:
+    """merge_grid=[1.0] makes the only step candidate the full Taylor jump; with the tie going to the
+    larger alpha it reproduces the old single jump (guard off), i.e. identical deployed weights."""
+    single = _drive(plan_jobs(_merge_cfg(guard=False), {})[0])          # old path: one closed-form jump
+    search = _drive(plan_jobs(_merge_cfg(merge_search=True, merge_grid=[1.0]), {})[0])
+    assert search.guard_log[-1]["alpha"] in (1.0, "local")
+    if search.guard_log[-1]["alpha"] == 1.0:  # jump kept -> same trainable weights as the single-jump model
+        # compare parameters only: _merge_search recalibrates BN per candidate (per spec), and the shuffled
+        # BN re-estimation draws a different RNG than the in-cascade one, so the running-stat buffers differ
+        # slightly. The step itself (conv/linear/BN gamma-beta) is identical.
+        a, b = dict(single.levels[-1].named_parameters()), dict(search.levels[-1].named_parameters())
+        assert all(torch.allclose(a[k], b[k]) for k in a)
+
+
+def test_merge_search_logs_chosen_alpha() -> None:
+    """merge_search records the chosen alpha (or 'local') for every merge in metrics.json."""
+    from htcl.engine import run_job
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        (job,) = plan_jobs(_merge_cfg(merge_search=True), {})
+        assert run_job(job, d + "/m", torch.device("cpu"))
+        merge = json.loads(open(d + "/m/metrics.json").read())["htcl_merge"]
+    assert merge["merges"] >= 1
+    allowed = {"0.0", "0.25", "0.5", "0.75", "1.0", "local"}
+    assert set(merge["alpha_hist"]) <= allowed and sum(merge["alpha_hist"].values()) == merge["merges"]
+    assert all(e["alpha"] in {0.0, 0.25, 0.5, 0.75, 1.0, "local"} for e in merge["log"])
+
+
+def test_merge_last_flag_controls_final_group() -> None:
+    """merge_last=False keeps the skip-incomplete behaviour (2 merges on 5 tasks, k=2); merge_last=True
+    merges the final lone group too (3 merges)."""
+    from htcl.engine import job_steps, load_data, make_learner
+
+    def count_consolidations(**extra):
+        (job,) = plan_jobs(_merge_cfg(merge_search=True, **extra), {})
+        torch.manual_seed(0)
+        learner = make_learner(job, load_data(job["dataset"]), torch.device("cpu"))
+        calls, orig = [], learner._consolidate
+        learner._consolidate = lambda g, c: (calls.append(list(g)), orig(g, c))[1]
+        for step in job_steps(job):
+            learner.learn(step)
+        return len(calls)
+
+    assert count_consolidations(merge_last=False) == 2  # [a,b],[c,d] only; [e] skipped
+    assert count_consolidations(merge_last=True) == 3   # [e] merged like any other group
+
+
+def test_memory_baseline_replays_without_htcl() -> None:
+    """A buffer-free method with memory=true gets an N-sample reservoir replayed into each task but no
+    HTCL; it is a distinct job (own id + '+mem' label) from plain finetune."""
+    from htcl.engine import job_steps, load_data, make_learner, run_job
+    import tempfile
+    ds = {"name": "splitmnist", "samples_per_class": 6, "lr": 0.01, "batch_size": 8, "epochs": 1,
+          "buffer_size": 10}
+    cfg = {"experiment": "t", "orders": 1, "datasets": [ds],
+           "methods": [{"name": "finetune"}, {"name": "finetune", "memory": True}]}
+    plain, mem = plan_jobs(cfg, {})
+    assert plain["job_id"] != mem["job_id"] and "mem" in mem["method_label"]
+    learner = make_learner(mem, load_data(mem["dataset"]), torch.device("cpu"))
+    assert learner.buffer is not None
+    for step in job_steps(mem):
+        learner.learn(step)
+    assert len(learner.buffer) > 0  # the reservoir filled as tasks arrived
+    with tempfile.TemporaryDirectory() as d:
+        assert run_job(mem, d + "/v4", torch.device("cpu"))
+        acc = json.loads(open(d + "/v4/metrics.json").read())["acc"]
+    assert 0.0 <= acc <= 100.0
+
+
 def test_classes_per_task_prefix() -> None:
     """classes_per_task: shorter sequences use a prefix of the same class shuffle."""
     from htcl.data import _class_tasks

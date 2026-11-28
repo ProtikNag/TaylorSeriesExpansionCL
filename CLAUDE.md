@@ -34,11 +34,14 @@ anonymous release copy before submission, and `scripts/check_anonymity.sh` skips
     `htcl_window_tasks`.
   - For methods without a buffer (finetune, EWC, SR), HTCL supplies the N-sample buffer. The paper
     states this: without replay these methods cannot retain memory.
-- **HTCL is the online schedule:**
-  - Every task is consolidated as it arrives.
-  - Every k tasks the window is revised on validation data.
-  - Catch-up is not part of the algorithm.
-  - The group schedule exists only as an ablation.
+- **HTCL is the group schedule (k=2), the algorithm the paper describes:**
+  - The stream is split into consecutive groups of k tasks. For each group a local learner is trained
+    from the persistent hierarchical model w_1, trying both orders of the pair and keeping the better one
+    on validation data; finetune/EWC/SR get HTCL's N-sample reservoir replayed during local training.
+  - The global is then merged toward that local with the closed-form Taylor step, kept under a safety
+    check (guard) or a step-size search (`merge_search`) over α ∈ {0, .25, .5, .75, 1}.
+  - The online schedule (`schedule: online`, consolidate every task, revise every k) is a documented
+    ablation only. Catch-up is not part of the algorithm.
   - λ defaults to 1/lr.
 - **Selection** uses the 10% validation split. Test data is for reporting only.
 - **Resumable runs.**
