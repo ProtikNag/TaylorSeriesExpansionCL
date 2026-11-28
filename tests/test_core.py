@@ -356,6 +356,33 @@ def test_memory_baseline_replays_without_htcl() -> None:
     assert 0.0 <= acc <= 100.0
 
 
+def test_noreplay_global_excludes_reservoir() -> None:
+    """For a buffer-free method, HTCL's N-sample reservoir protects the LOCAL (replayed in _learn_group)
+    but is excluded from the GLOBAL consolidation data, so the deployed no-replay model never trains on
+    it. A method with its own buffer keeps that buffer in the consolidation data."""
+    from htcl.engine import job_steps, load_data, make_learner
+
+    def build(name):
+        cfg = {"experiment": "t", "orders": 1,
+               "datasets": [{"name": "splitmnist", "samples_per_class": 6, "lr": 0.01, "batch_size": 8,
+                             "epochs": 1, "buffer_size": 10}],
+               "methods": [{"name": name, "htcl": {"k": 2, "schedule": "group", "curvature_samples": 8}}]}
+        (job,) = plan_jobs(cfg, {})
+        torch.manual_seed(0)
+        return make_learner(job, load_data(job["dataset"]), torch.device("cpu")), job_steps(job)
+
+    ln, steps = build("finetune")           # buffer-free: HTCL injects a reservoir
+    ln.learn(steps[0])                       # process first group -> reservoir fills
+    assert ln.buffer is not None and len(ln.buffer) > 0
+    group_len = sum(len(ln.data.tasks[t].train) for t in steps[1])
+    assert len(ln._consolidation_data(steps[1])) == group_len  # reservoir NOT in the global consolidation
+
+    le, se = build("er")                     # own buffer: kept in the consolidation data
+    le.learn(se[0])
+    assert le.buffer is None and getattr(le.method, "buffer", None) is not None
+    assert len(le._consolidation_data(se[1])) > sum(len(le.data.tasks[t].train) for t in se[1])
+
+
 def test_classes_per_task_prefix() -> None:
     """classes_per_task: shorter sequences use a prefix of the same class shuffle."""
     from htcl.data import _class_tasks

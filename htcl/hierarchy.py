@@ -509,10 +509,14 @@ class HTCL:
                                "scores": {str(lab): round(sc, 4) for sc, _, lab, _ in scored}})
 
     def _consolidation_data(self, group: list[int]) -> Dataset:
-        """Current group's training data plus the replay buffer (the method's, else HTCL's own)."""
+        """Current group's training data for the GLOBAL consolidation (Taylor g/H and BN recalibration),
+        plus the method's OWN replay buffer (ER/SER/DER). HTCL's injected N-sample reservoir for
+        buffer-free methods (finetune/EWC/SR) is a local-window-only device: it protects the local learner
+        (see `_learn_group`), but the global model does not train on it, so a deployed no-replay model
+        carries no replay memory."""
         parts: list[Dataset] = [self.data.tasks[t].train for t in group]
-        buffer = self.buffer if self.buffer is not None else self.method.buffer
-        if len(buffer) > 0:
+        buffer = getattr(self.method, "buffer", None)  # method's own buffer only; not HTCL's reservoir
+        if buffer is not None and len(buffer) > 0:
             parts.append(BufferDataset(buffer))
         return ConcatDataset(parts)
 
