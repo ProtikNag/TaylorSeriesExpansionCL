@@ -1,0 +1,27 @@
+{
+  "acc": 81.44,
+  "forgetting": 15.3,
+  "bwt": -15.3,
+  "final_per_task": [
+    74.2,
+    77.8,
+    81.4,
+    76.1,
+    97.7
+  ],
+  "group_basis": {
+    "2": {
+      "forgetting": 15.3,
+      "bwt": -15.3
+    }
+  },
+  "htcl_window_tasks": 2,
+  "htcl_revisions": [],
+  "learned_pos": {
+    "0": 1,
+    "1": 1,
+    "2": 3,
+    "3": 3,
+    "4": 4
+  }
+}

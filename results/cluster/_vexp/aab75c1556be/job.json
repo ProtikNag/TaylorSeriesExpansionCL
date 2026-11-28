@@ -1,0 +1,37 @@
+{
+  "experiment": "_vexp",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "splitmnist",
+    "num_tasks": 5,
+    "classes_per_task": 2,
+    "lr": 0.01,
+    "batch_size": 64,
+    "epochs": 10,
+    "buffer_size": 50,
+    "samples_per_class": 500
+  },
+  "method": {
+    "lam": 0.0001,
+    "k": 2,
+    "power_iters": 1,
+    "memory": true,
+    "name": "sr"
+  },
+  "order": [
+    2,
+    4,
+    0,
+    3,
+    1
+  ],
+  "order_index": 12,
+  "seed": 0,
+  "job_id": "aab75c1556be",
+  "dataset_label": "splitmnist",
+  "method_label": "sr|+mem=50"
+}
