@@ -1,0 +1,330 @@
+dataset,method,variant,order,acc
+SplitMNIST,er,base,3 1 4 0 2,74.2400
+SplitMNIST,ser,base,0 2 3 1 4,85.3600
+SplitMNIST,er,base,1 3 4 0 2,77.3200
+SplitMNIST,ser,base,1 0 2 3 4,87.5400
+SplitMNIST,der,base,2 0 1 3 4,72.9800
+SplitMNIST,der,base,2 4 0 3 1,70.5600
+SplitMNIST,ser,base,2 0 3 1 4,84.6000
+SplitMNIST,der,base,0 1 2 3 4,76.7600
+SplitMNIST,er,base,4 2 3 0 1,80.0800
+SplitMNIST,der,HTCL,0 2 1 3 4,81.7800
+SplitMNIST,der,base,1 4 3 2 0,80.6000
+SplitMNIST,ser,base,1 0 3 2 4,87.1600
+SplitMNIST,der,base,0 2 1 3 4,79.2200
+SplitMNIST,der,base,4 1 3 2 0,76.3400
+SplitMNIST,der,base,1 0 3 2 4,80.7200
+SplitMNIST,der,HTCL,1 4 2 3 0,76.2000
+SplitMNIST,ser,base,3 1 0 4 2,82.7800
+SplitMNIST,er,base,0 1 3 2 4,80.8800
+SplitMNIST,er,base,0 2 3 1 4,81.8400
+SplitMNIST,ser,base,0 1 2 3 4,84.5400
+SplitMNIST,ser,base,3 1 4 0 2,84.4800
+SplitMNIST,der,HTCL,1 3 0 4 2,77.2000
+SplitMNIST,er,HTCL,1 4 2 3 0,85.6000
+SplitMNIST,er,base,2 4 0 3 1,83.7200
+SplitMNIST,er,HTCL,0 1 2 3 4,84.8600
+SplitMNIST,er,base,2 0 3 1 4,80.4800
+SplitMNIST,der,base,1 3 4 0 2,66.1200
+SplitMNIST,er,HTCL,1 3 0 4 2,83.8200
+SplitMNIST,er,base,0 2 1 3 4,81.0400
+SplitMNIST,der,HTCL,0 1 2 3 4,84.0200
+SplitMNIST,ser,base,4 2 0 3 1,83.0200
+SplitMNIST,er,base,4 2 0 3 1,77.9200
+SplitMNIST,ser,HTCL,1 3 0 4 2,86.4400
+SplitMNIST,ser,base,1 4 2 3 0,86.9000
+SplitMNIST,der,HTCL,2 4 0 3 1,80.5200
+SplitMNIST,ser,base,0 1 3 2 4,81.7400
+SplitMNIST,ser,base,2 4 3 0 1,85.4200
+SplitMNIST,er,base,1 0 2 3 4,79.9800
+SplitMNIST,der,base,2 4 3 0 1,72.0800
+SplitMNIST,ser,base,0 2 1 3 4,85.2800
+SplitMNIST,er,HTCL,0 2 1 3 4,84.9800
+SplitMNIST,er,base,4 1 2 3 0,84.9200
+SplitMNIST,ser,base,4 2 3 0 1,79.7200
+SplitMNIST,ser,base,4 1 3 2 0,82.5600
+SplitMNIST,der,base,4 2 3 0 1,78.5800
+SplitMNIST,der,base,1 3 0 4 2,64.7800
+SplitMNIST,ser,HTCL,0 1 2 3 4,88.8000
+SplitMNIST,ser,base,1 3 4 0 2,84.0400
+SplitMNIST,ser,HTCL,2 4 0 3 1,86.9000
+SplitMNIST,der,base,1 0 2 3 4,75.3200
+SplitMNIST,der,base,0 1 3 2 4,75.3000
+SplitMNIST,er,base,4 1 3 2 0,83.4600
+SplitMNIST,der,base,3 1 4 0 2,69.9400
+SplitMNIST,der,base,1 4 2 3 0,78.4200
+SplitMNIST,er,base,0 1 2 3 4,81.3800
+SplitMNIST,er,base,1 3 0 4 2,80.4000
+SplitMNIST,ser,base,4 1 2 3 0,82.7000
+SplitMNIST,er,base,2 0 1 3 4,76.7400
+SplitMNIST,ser,base,1 3 0 4 2,83.4600
+SplitMNIST,ser,HTCL,1 4 2 3 0,88.7400
+SplitMNIST,er,base,3 1 0 4 2,75.4200
+SplitMNIST,der,base,4 1 2 3 0,82.6600
+SplitMNIST,er,base,2 4 3 0 1,82.6800
+SplitMNIST,der,base,2 0 3 1 4,69.5400
+SplitMNIST,der,base,3 1 0 4 2,70.1000
+SplitMNIST,er,base,1 0 3 2 4,85.5400
+SplitMNIST,ser,base,2 0 1 3 4,86.4800
+SplitMNIST,ser,base,2 4 0 3 1,85.7600
+SplitMNIST,ser,base,1 4 3 2 0,88.9200
+SplitMNIST,der,base,4 2 0 3 1,76.0600
+SplitMNIST,der,base,0 2 3 1 4,74.7200
+SplitMNIST,ser,HTCL,0 2 1 3 4,87.7600
+SplitMNIST,er,base,1 4 2 3 0,84.8400
+SplitMNIST,er,base,1 4 3 2 0,82.6600
+SplitMNIST,er,HTCL,2 4 0 3 1,78.8200
+SplitMNIST,ewc,base,1 0 3 2 4,74.9400
+SplitMNIST,finetune,base,1 3 4 0 2,56.5600
+SplitMNIST,finetune,HTCL,1 4 2 3 0,68.1200
+SplitMNIST,sr,base,4 1 3 2 0,57.5800
+SplitMNIST,ewc,base,4 2 3 0 1,57.6200
+SplitMNIST,sr,base,2 4 3 0 1,57.5200
+SplitMNIST,finetune,base,0 2 1 3 4,64.3400
+SplitMNIST,finetune,HTCL,1 3 0 4 2,81.6000
+SplitMNIST,sr,HTCL,1 4 2 3 0,79.6000
+SplitMNIST,sr,base,4 2 3 0 1,67.5400
+SplitMNIST,sr,base,1 4 2 3 0,56.6600
+SplitMNIST,ewc,HTCL,1 3 0 4 2,85.6000
+SplitMNIST,ewc,base,0 1 3 2 4,64.7400
+SplitMNIST,sr,base,0 1 3 2 4,72.6200
+SplitMNIST,finetune,base,3 1 0 4 2,62.2800
+SplitMNIST,finetune,base,1 0 2 3 4,58.8200
+SplitMNIST,ewc,base,1 3 0 4 2,63.4400
+SplitMNIST,ewc,HTCL,2 4 0 3 1,74.5000
+SplitMNIST,finetune,base,1 4 2 3 0,70.5800
+SplitMNIST,ewc,base,3 1 0 4 2,56.5000
+SplitMNIST,finetune,base,4 2 0 3 1,62.5800
+SplitMNIST,sr,base,1 3 4 0 2,61.8400
+SplitMNIST,sr,HTCL,0 1 2 3 4,84.2600
+SplitMNIST,sr,HTCL,2 4 0 3 1,78.5000
+SplitMNIST,ewc,base,3 1 4 0 2,53.7600
+SplitMNIST,ewc,HTCL,1 4 2 3 0,82.3400
+SplitMNIST,ewc,base,0 1 2 3 4,66.1000
+SplitMNIST,ewc,base,2 0 1 3 4,55.0600
+SplitMNIST,finetune,base,0 1 2 3 4,53.0800
+SplitMNIST,sr,base,2 0 3 1 4,67.5800
+SplitMNIST,sr,HTCL,0 2 1 3 4,80.9600
+SplitMNIST,finetune,base,1 4 3 2 0,74.5200
+SplitMNIST,sr,base,2 0 1 3 4,59.0400
+SplitMNIST,ewc,base,4 1 3 2 0,63.0800
+SplitMNIST,ewc,base,1 4 3 2 0,69.5200
+SplitMNIST,finetune,HTCL,0 1 2 3 4,86.3600
+SplitMNIST,finetune,base,0 1 3 2 4,66.2000
+SplitMNIST,ewc,base,4 1 2 3 0,64.5600
+SplitMNIST,finetune,base,1 0 3 2 4,71.2600
+SplitMNIST,ewc,base,2 4 0 3 1,52.9000
+SplitMNIST,finetune,base,2 4 0 3 1,57.6600
+SplitMNIST,finetune,base,0 2 3 1 4,62.5800
+SplitMNIST,sr,base,3 1 0 4 2,62.7400
+SplitMNIST,finetune,HTCL,2 4 0 3 1,72.1200
+SplitMNIST,finetune,base,4 1 2 3 0,54.1600
+SplitMNIST,ewc,base,1 3 4 0 2,59.9800
+SplitMNIST,sr,base,0 1 2 3 4,64.8000
+SplitMNIST,ewc,base,0 2 3 1 4,64.0000
+SplitMNIST,sr,base,1 4 3 2 0,64.3200
+SplitMNIST,finetune,HTCL,0 2 1 3 4,73.4200
+SplitMNIST,finetune,base,4 2 3 0 1,57.2800
+SplitMNIST,ewc,base,4 2 0 3 1,55.1400
+SplitMNIST,ewc,HTCL,0 2 1 3 4,83.2400
+SplitMNIST,sr,base,4 2 0 3 1,61.9200
+SplitMNIST,finetune,base,2 0 3 1 4,68.7800
+SplitMNIST,sr,base,0 2 1 3 4,65.1000
+SplitMNIST,finetune,base,4 1 3 2 0,64.7200
+SplitMNIST,sr,base,1 3 0 4 2,55.2800
+SplitMNIST,sr,base,0 2 3 1 4,66.1200
+SplitMNIST,finetune,base,2 0 1 3 4,65.4000
+SplitMNIST,sr,base,3 1 4 0 2,56.8200
+SplitMNIST,sr,base,4 1 2 3 0,55.4400
+SplitMNIST,ewc,base,1 4 2 3 0,72.8600
+SplitMNIST,ewc,HTCL,0 1 2 3 4,73.4600
+SplitMNIST,sr,HTCL,1 3 0 4 2,78.6800
+SplitMNIST,ewc,base,1 0 2 3 4,76.3200
+SplitMNIST,ewc,base,2 0 3 1 4,56.1200
+SplitMNIST,sr,base,2 4 0 3 1,52.3600
+SplitMNIST,finetune,base,1 3 0 4 2,61.8000
+SplitMNIST,ewc,base,2 4 3 0 1,64.4400
+SplitMNIST,finetune,base,2 4 3 0 1,66.6400
+SplitMNIST,ewc,base,0 2 1 3 4,70.1800
+SplitMNIST,sr,base,1 0 2 3 4,65.7600
+SplitMNIST,finetune,base,3 1 4 0 2,59.6600
+SplitMNIST,sr,base,1 0 3 2 4,69.3800
+20NG,er,base,1 0 3 2 4,25.0442
+20NG,er,HTCL,1 4 2 3 0,26.2603
+20NG,ser,base,4 1 2 3 0,26.2603
+20NG,er,HTCL,2 4 0 3 1,26.2603
+20NG,ser,HTCL,1 4 2 3 0,26.2603
+20NG,er,base,1 0 2 3 4,25.0442
+20NG,der,base,0 2 1 3 4,26.2603
+20NG,er,base,4 2 3 0 1,25.1413
+20NG,er,base,0 2 1 3 4,26.2603
+20NG,der,base,1 4 2 3 0,26.2603
+20NG,der,base,0 1 2 3 4,26.2603
+20NG,ser,HTCL,0 2 1 3 4,23.5543
+20NG,er,base,2 0 1 3 4,25.0442
+20NG,er,base,4 1 3 2 0,25.1413
+20NG,er,base,1 4 2 3 0,26.2603
+20NG,der,base,3 1 0 4 2,31.5905
+20NG,der,base,1 3 4 0 2,31.0401
+20NG,ser,HTCL,2 4 0 3 1,25.1413
+20NG,der,base,0 1 3 2 4,26.2603
+20NG,der,base,4 1 3 2 0,26.2603
+20NG,der,base,1 4 3 2 0,26.2603
+20NG,ser,base,4 2 0 3 1,26.2731
+20NG,er,base,3 1 0 4 2,26.2731
+20NG,der,base,1 0 2 3 4,26.2603
+20NG,ser,base,1 4 3 2 0,23.5543
+20NG,der,base,4 2 0 3 1,26.2603
+20NG,er,base,0 2 3 1 4,23.5543
+20NG,der,HTCL,0 2 1 3 4,26.2603
+20NG,ser,base,1 0 3 2 4,25.0442
+20NG,ser,HTCL,1 3 0 4 2,23.5543
+20NG,er,base,0 1 2 3 4,26.2603
+20NG,er,base,3 1 4 0 2,25.1413
+20NG,ser,base,0 2 3 1 4,26.2603
+20NG,er,base,4 2 0 3 1,25.1413
+20NG,der,base,2 4 0 3 1,26.2603
+20NG,ser,base,3 1 4 0 2,26.2603
+20NG,ser,base,1 4 2 3 0,30.6235
+20NG,der,base,1 3 0 4 2,35.2202
+20NG,ser,base,0 2 1 3 4,26.2603
+20NG,der,base,4 1 2 3 0,26.2603
+20NG,der,base,2 0 3 1 4,26.2603
+20NG,ser,base,4 2 3 0 1,26.3009
+20NG,er,base,4 1 2 3 0,26.2603
+20NG,der,base,0 2 3 1 4,26.2603
+20NG,der,HTCL,2 4 0 3 1,26.2603
+20NG,er,HTCL,0 2 1 3 4,26.2603
+20NG,ser,base,3 1 0 4 2,26.2603
+20NG,ser,base,1 3 4 0 2,25.1413
+20NG,der,base,3 1 4 0 2,27.5230
+20NG,er,HTCL,1 3 0 4 2,25.0442
+20NG,er,base,1 4 3 2 0,25.1413
+20NG,ser,HTCL,0 1 2 3 4,25.0442
+20NG,der,HTCL,0 1 2 3 4,26.2603
+20NG,er,base,2 4 3 0 1,25.0442
+20NG,ser,base,4 1 3 2 0,26.2603
+20NG,der,base,1 0 3 2 4,26.2603
+20NG,ser,base,2 4 0 3 1,23.5543
+20NG,er,base,2 4 0 3 1,25.1413
+20NG,der,base,2 0 1 3 4,26.2603
+20NG,ser,base,0 1 3 2 4,26.2603
+20NG,der,base,4 2 3 0 1,26.2603
+20NG,der,HTCL,1 4 2 3 0,26.2603
+20NG,ser,base,0 1 2 3 4,26.2603
+20NG,er,HTCL,0 1 2 3 4,26.2603
+20NG,er,base,1 3 4 0 2,23.5543
+20NG,er,base,0 1 3 2 4,23.5543
+20NG,er,base,2 0 3 1 4,25.0442
+20NG,der,base,2 4 3 0 1,26.2603
+20NG,ser,base,1 0 2 3 4,25.0442
+20NG,ser,base,2 0 3 1 4,25.0442
+20NG,ser,base,1 3 0 4 2,26.2603
+20NG,ser,base,2 4 3 0 1,23.5543
+20NG,er,base,1 3 0 4 2,25.0442
+20NG,der,HTCL,1 3 0 4 2,31.1046
+20NG,ser,base,2 0 1 3 4,25.2134
+Cora,ewc,base,0 1 2,81.3903
+Cora,der,base,0 2 1,77.6305
+Cora,sr,base,2 1 0,78.2707
+Cora,ser,base,1 2 0,82.6484
+Cora,finetune,base,0 1 2,72.7998
+Cora,ser,base,1 0 2,81.4749
+Cora,finetune,HTCL,0 1 2,75.6076
+Cora,er,base,0 1 2,74.3667
+Cora,finetune,base,0 2 1,73.5772
+Cora,er,base,0 2 1,75.4939
+Cora,ewc,base,0 2 1,77.1736
+Cora,er,base,1 0 2,75.9983
+Cora,er,HTCL,0 2 1,73.6534
+Cora,sr,base,1 0 2,66.3808
+Cora,der,base,1 2 0,80.4383
+Cora,er,HTCL,0 1 2,74.1805
+Cora,der,HTCL,1 2 0,77.0283
+Cora,ser,HTCL,1 2 0,82.8416
+Cora,ser,base,0 1 2,81.2042
+Cora,ser,HTCL,0 1 2,82.5736
+Cora,er,HTCL,1 2 0,77.9403
+Cora,ewc,HTCL,0 2 1,78.7687
+Cora,ewc,base,1 2 0,79.9981
+Cora,sr,HTCL,0 2 1,73.7451
+Cora,der,base,2 0 1,72.1063
+Cora,sr,HTCL,1 2 0,81.8869
+Cora,sr,base,1 2 0,69.9490
+Cora,ewc,base,1 0 2,77.8840
+Cora,finetune,HTCL,1 2 0,81.2043
+Cora,der,HTCL,0 1 2,73.9350
+Cora,er,base,2 1 0,81.2339
+Cora,er,base,2 0 1,73.3982
+Cora,finetune,base,1 0 2,66.5233
+Cora,sr,HTCL,0 1 2,75.9913
+Cora,finetune,HTCL,0 2 1,73.8072
+Cora,finetune,base,2 0 1,71.7890
+Cora,sr,base,2 0 1,71.5294
+Cora,finetune,base,2 1 0,77.8434
+Cora,ewc,HTCL,1 2 0,86.9839
+Cora,er,base,1 2 0,77.4255
+Cora,finetune,base,1 2 0,70.0914
+Cora,sr,base,0 1 2,72.7998
+Cora,ser,base,0 2 1,82.6217
+Cora,sr,base,0 2 1,73.1429
+Cora,der,base,1 0 2,70.0635
+Cora,ewc,base,2 1 0,88.0091
+Cora,ser,base,2 0 1,83.2141
+Cora,der,base,2 1 0,73.8197
+Cora,ewc,HTCL,0 1 2,80.2069
+Cora,ser,HTCL,0 2 1,85.6878
+Cora,der,base,0 1 2,72.8477
+Cora,ewc,base,2 0 1,75.9805
+Cora,der,HTCL,0 2 1,73.7521
+Cora,ser,base,2 1 0,83.3804
+CIFAR100,er,base,7 2 1 8 4 0 5 9 3 6,20.8400
+CIFAR100,der,base,8 4 2 6 5 9 0 7 1 3,13.7000
+CIFAR100,der,base,4 8 2 6 5 9 0 7 1 3,12.6900
+CIFAR100,er,base,8 6 7 9 5 3 0 4 1 2,18.5900
+CIFAR100,er,HTCL,6 8 7 9 5 3 0 4 1 2,17.9800
+CIFAR100,er,base,6 8 9 7 5 3 0 4 1 2,18.3400
+CIFAR100,er,HTCL,4 8 2 6 5 9 0 7 1 3,19.6700
+CIFAR100,der,base,4 8 6 2 5 9 0 7 1 3,13.1300
+CIFAR100,er,HTCL,7 8 6 9 5 0 2 1 3 4,18.2400
+CIFAR100,der,HTCL,6 8 7 9 5 3 0 4 1 2,12.0900
+CIFAR100,der,base,0 2 9 4 6 7 1 5 3 8,14.3300
+CIFAR100,er,base,0 2 4 9 6 7 1 5 3 8,19.3200
+CIFAR100,der,base,2 0 9 4 6 7 1 5 3 8,14.9000
+CIFAR100,der,HTCL,0 2 4 9 6 7 1 5 3 8,14.8900
+CIFAR100,er,base,2 0 4 9 6 7 1 5 3 8,19.5200
+CIFAR100,er,base,7 8 9 6 5 0 2 1 3 4,20.9600
+CIFAR100,der,base,8 7 9 6 5 0 2 1 3 4,16.1400
+CIFAR100,er,HTCL,2 7 1 8 4 0 5 9 3 6,19.6900
+CIFAR100,er,base,8 4 2 6 5 9 0 7 1 3,19.1000
+CIFAR100,er,base,2 0 9 4 6 7 1 5 3 8,20.5500
+CIFAR100,er,base,6 8 7 9 5 3 0 4 1 2,18.7900
+CIFAR100,der,base,7 8 6 9 5 0 2 1 3 4,15.4700
+CIFAR100,der,base,2 7 8 1 4 0 5 9 3 6,17.3200
+CIFAR100,der,base,7 2 8 1 4 0 5 9 3 6,15.1200
+CIFAR100,der,base,6 8 9 7 5 3 0 4 1 2,11.6300
+CIFAR100,er,base,8 4 6 2 5 9 0 7 1 3,19.1200
+CIFAR100,der,base,0 2 4 9 6 7 1 5 3 8,16.1300
+CIFAR100,der,HTCL,2 7 1 8 4 0 5 9 3 6,15.6400
+CIFAR100,er,base,8 7 6 9 5 0 2 1 3 4,19.2200
+CIFAR100,er,base,2 7 8 1 4 0 5 9 3 6,18.7100
+CIFAR100,er,base,4 8 6 2 5 9 0 7 1 3,18.7800
+CIFAR100,der,HTCL,4 8 2 6 5 9 0 7 1 3,15.3800
+CIFAR100,der,base,7 2 1 8 4 0 5 9 3 6,15.1700
+CIFAR100,er,base,7 2 8 1 4 0 5 9 3 6,19.5100
+CIFAR100,der,base,8 6 9 7 5 3 0 4 1 2,14.8000
+CIFAR100,er,base,7 8 6 9 5 0 2 1 3 4,19.5400
+CIFAR100,er,base,0 2 9 4 6 7 1 5 3 8,18.5100
+CIFAR100,der,base,8 7 6 9 5 0 2 1 3 4,15.4400
+CIFAR100,der,base,8 4 6 2 5 9 0 7 1 3,13.1900
+CIFAR100,der,base,8 6 7 9 5 3 0 4 1 2,15.1900
+CIFAR100,der,base,2 7 1 8 4 0 5 9 3 6,16.2700
+CIFAR100,der,base,2 0 4 9 6 7 1 5 3 8,14.7000
+CIFAR100,der,HTCL,7 8 6 9 5 0 2 1 3 4,13.6400
+CIFAR100,er,HTCL,0 2 4 9 6 7 1 5 3 8,18.9800
+CIFAR100,er,base,4 8 2 6 5 9 0 7 1 3,18.3800
+CIFAR100,der,base,6 8 7 9 5 3 0 4 1 2,12.1700
+CIFAR100,er,base,8 7 9 6 5 0 2 1 3 4,19.3400
+CIFAR100,der,base,7 8 9 6 5 0 2 1 3 4,14.8900
+CIFAR100,er,base,8 6 9 7 5 3 0 4 1 2,18.2800
+CIFAR100,er,base,2 7 1 8 4 0 5 9 3 6,19.9700

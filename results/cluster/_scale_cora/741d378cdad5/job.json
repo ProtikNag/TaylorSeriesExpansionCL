@@ -1,0 +1,33 @@
+{
+  "experiment": "_scale_cora",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "cora",
+    "num_tasks": 3,
+    "lr": 0.01,
+    "batch_size": "full",
+    "epochs": 100,
+    "buffer_size": 50,
+    "samples_per_class": null
+  },
+  "method": {
+    "lam": 0.0001,
+    "k": 2,
+    "power_iters": 1,
+    "name": "sr"
+  },
+  "order": [
+    1,
+    0,
+    2
+  ],
+  "order_index": 2,
+  "seed": 0,
+  "job_id": "741d378cdad5",
+  "dataset_label": "cora",
+  "method_label": "sr"
+}

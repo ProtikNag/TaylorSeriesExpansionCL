@@ -1,0 +1,35 @@
+{
+  "experiment": "_scale_mnist_nr",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "splitmnist",
+    "num_tasks": 5,
+    "classes_per_task": 2,
+    "lr": 0.01,
+    "batch_size": 64,
+    "epochs": 10,
+    "buffer_size": 50,
+    "samples_per_class": 500
+  },
+  "method": {
+    "lam": 400.0,
+    "fisher_samples": 512,
+    "name": "ewc"
+  },
+  "order": [
+    1,
+    4,
+    2,
+    3,
+    0
+  ],
+  "order_index": 16,
+  "seed": 0,
+  "job_id": "63f9142bdb32",
+  "dataset_label": "splitmnist",
+  "method_label": "ewc"
+}

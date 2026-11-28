@@ -1,0 +1,34 @@
+{
+  "experiment": "_scale_20ng",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "news20",
+    "num_tasks": 5,
+    "lr": 0.001,
+    "batch_size": 32,
+    "epochs": 10,
+    "buffer_size": 100,
+    "samples_per_class": null
+  },
+  "method": {
+    "alpha": 0.5,
+    "beta": 0.0,
+    "name": "der"
+  },
+  "order": [
+    0,
+    2,
+    1,
+    3,
+    4
+  ],
+  "order_index": 4,
+  "seed": 0,
+  "job_id": "baeeb4d12530",
+  "dataset_label": "news20",
+  "method_label": "der"
+}

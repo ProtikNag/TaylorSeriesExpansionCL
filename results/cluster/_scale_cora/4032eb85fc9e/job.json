@@ -1,0 +1,55 @@
+{
+  "experiment": "_scale_cora",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "cora",
+    "num_tasks": 3,
+    "lr": 0.01,
+    "batch_size": "full",
+    "epochs": 100,
+    "buffer_size": 50,
+    "samples_per_class": null
+  },
+  "method": {
+    "htcl": {
+      "levels": 2,
+      "schedule": "group",
+      "k": 2,
+      "lam": 100.0,
+      "curvature": "fisher",
+      "curvature_samples": 512,
+      "hutchinson_probes": 4,
+      "aggregator": "taylor",
+      "search": "best",
+      "consolidate": true,
+      "guard": true,
+      "defer": false,
+      "nudge": false,
+      "local_epochs": 1,
+      "nudge_full": false,
+      "nudge_target": "window",
+      "step_scale": 1.0,
+      "clip_norm": null,
+      "catchup": null,
+      "fedprox_mu": 0.01,
+      "diloco_lr": 1.0,
+      "diloco_momentum": 0.0
+    },
+    "name": "er"
+  },
+  "order": [
+    1,
+    2,
+    0
+  ],
+  "order_index": 3,
+  "seed": 0,
+  "job_id": "4032eb85fc9e",
+  "dataset_label": "cora",
+  "method_label": "er|htcl.guard=True|htcl.k=2|htcl.levels=2|htcl.schedule=group",
+  "alias_of": null
+}

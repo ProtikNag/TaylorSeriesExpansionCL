@@ -1,0 +1,32 @@
+{
+  "experiment": "_scale_20ng",
+  "dataset": {
+    "scenario": "domain",
+    "seed": 0,
+    "momentum": 0.9,
+    "weight_decay": 0.0001,
+    "data_root": "data",
+    "name": "news20",
+    "num_tasks": 5,
+    "lr": 0.001,
+    "batch_size": 32,
+    "epochs": 10,
+    "buffer_size": 100,
+    "samples_per_class": null
+  },
+  "method": {
+    "name": "er"
+  },
+  "order": [
+    1,
+    0,
+    2,
+    3,
+    4
+  ],
+  "order_index": 2,
+  "seed": 0,
+  "job_id": "cb41879e689e",
+  "dataset_label": "news20",
+  "method_label": "er"
+}

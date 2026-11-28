@@ -1,0 +1,33 @@
+{
+  "acc": 80.64,
+  "forgetting": 9.2,
+  "bwt": -9.2,
+  "final_per_task": [
+    98.5,
+    71.3,
+    74.8,
+    75.4,
+    83.2
+  ],
+  "group_basis": {
+    "4": {
+      "forgetting": 9.2,
+      "bwt": -9.2
+    }
+  },
+  "htcl_window_tasks": 4,
+  "htcl_revisions": [],
+  "htcl_guard": {
+    "steps": 0,
+    "taken": 0,
+    "nudge_pct": null,
+    "log": []
+  },
+  "learned_pos": {
+    "1": 3,
+    "4": 3,
+    "2": 3,
+    "3": 3,
+    "0": 4
+  }
+}
