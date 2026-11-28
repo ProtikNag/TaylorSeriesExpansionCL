@@ -16,6 +16,7 @@ from typing import Callable
 
 import numpy as np
 import torch
+from torch.utils.data import ConcatDataset, Dataset
 
 from .consolidation import average_states, recalibrate_bn
 from .data import CLData, build_data, make_loader
@@ -42,9 +43,18 @@ def load_data(spec: dict) -> CLData:
     return _DATA_CACHE[key]
 
 
-def train_task(method: Method, data: CLData, task_id: int, hp: dict, device: torch.device) -> None:
-    """Train one task: begin_task, `epochs` passes of observe, end_task (epoch loop inside the task)."""
-    loader = make_loader(data.tasks[task_id].train, hp["batch_size"], shuffle=True)
+def train_task(method: Method, data: CLData, task_id: int, hp: dict, device: torch.device,
+               replay: Dataset | None = None) -> None:
+    """Train one task: begin_task, `epochs` passes of observe, end_task (epoch loop inside the task).
+
+    `replay` (optional): a dataset interleaved into the task's training stream. HTCL passes its own
+    reservoir here for buffer-free base methods (finetune/EWC/SR), so the local learner replays past
+    tasks and is protected from forgetting them -- the replay protection the buffered methods get for
+    free. Buffered methods (ER/SER/DER) replay their own buffer inside `observe`, so `replay` is None.
+    """
+    train = data.tasks[task_id].train
+    source = ConcatDataset([train, replay]) if replay is not None and len(replay) > 0 else train
+    loader = make_loader(source, hp["batch_size"], shuffle=True)
     method.model.train()
     method.begin_task(task_id, loader)
     for _ in range(int(hp["epochs"])):

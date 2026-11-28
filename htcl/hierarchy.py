@@ -363,6 +363,9 @@ class HTCL:
         sigmas = list(itertools.permutations(sorted(group)))
         if cfg["search"] == "random":
             sigmas = [sigmas[int(torch.randint(len(sigmas), (1,)))]]
+        # Buffer-free base methods (finetune/EWC/SR) replay HTCL's own reservoir during local training, so
+        # the local learner is protected from forgetting past groups -- the protection ER/SER/DER get for free.
+        replay = BufferDataset(self.buffer) if self.buffer is not None and len(self.buffer) > 0 else None
         best_score, best_state, best_sigma, candidates = -np.inf, None, None, []
         for sigma in sigmas:
             self.method.load_state_dict(copy.deepcopy(snapshot))
@@ -372,7 +375,7 @@ class HTCL:
             if cfg["aggregator"] == "fedprox":
                 self.method.prox = (cfg["fedprox_mu"], [p.detach().clone() for p in C.trainable(self.method.model)])
             for task_id in sigma:
-                train_task(self.method, self.data, task_id, self.hp, self.device)
+                train_task(self.method, self.data, task_id, self.hp, self.device, replay=replay)
             self.method.prox = None
             score = float(np.mean(evaluate_method(self.method, self.data, "val", self.device, list(group))))
             if score > best_score:  # strict: the first permutation wins ties
