@@ -354,8 +354,8 @@ class HTCL:
         """Current group's training data for the GLOBAL consolidation (Taylor g/H and BN recalibration),
         plus the method's OWN replay buffer (ER/SER/DER). HTCL's injected N-sample reservoir for
         buffer-free methods (finetune/EWC/SR) is a local-window-only device: it protects the local learner
-        (see `_learn_group`), but the global model does not train on it, so a deployed no-replay model
-        carries no replay memory."""
+        (see `_learn_group`), so the global's Taylor step takes no replay-gradient of its own -- it reaches
+        the reservoir's effect only through the merge toward that local (`_merge_search`)."""
         parts: list[Dataset] = [self.data.tasks[t].train for t in group]
         buffer = getattr(self.method, "buffer", None)  # method's own buffer only; not HTCL's reservoir
         if buffer is not None and len(buffer) > 0:

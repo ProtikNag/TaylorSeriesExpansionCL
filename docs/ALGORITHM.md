@@ -26,8 +26,10 @@ The task stream is split into consecutive **groups of k tasks**. For each group:
    skipped — the search's α=0 / local candidates absorb the overshoot a lone-task consolidation would cause.
 5. **BN / gradient buffer split.** BatchNorm recalibration of the deployed model always sees the replay
    buffer (statistics over seen tasks, not training). The Taylor **gradient** (g, H) for a buffer-free
-   method is the **group only** — its injected reservoir protects the local (step 2), but the deployed
-   model never *trains* on it, so a deployed no-replay model carries no replay memory.
+   method is the **group only** — its injected reservoir trains the local (step 2), so the deployed global
+   takes **no replay-gradient step of its own**. It still inherits what the reservoir taught through the
+   merge toward the replay-protected local (and when the search adopts the local, the deployed model *is*
+   that replay-trained local).
 
 Closed-form Taylor step at level i: `w_i ← w_i + (H_i + λ_i I)^{-1} (λ_i Δd_i − g_i)`, diagonal empirical
 Fisher for H, `λ = 1/lr`. Time per group O(k!·train + |grid|·eval); space O(model + N buffer).
@@ -41,20 +43,32 @@ Fisher for H, `λ = 1/lr`. Time per group O(k!·train + |grid|·eval); space O(m
 | der | 74.5/4.93 | 75.6/3.10 | 79.9/2.97 | **80.8/4.22** | — |
 | ser | 84.6/2.21 | 85.3/3.14 | 87.7/0.98 | **86.5/2.03** | — |
 | ewc | 63.1/7.14 | 79.0/2.79 | 80.2/3.18 | **81.6/4.09** | 78.3/4.72 |
-| sr | 62.0/5.47 | 78.1/1.09 | 77.8/4.58 | **79.6/4.84** | 79.6/2.91 |
+| sr | 62.0/5.47 | 78.1/1.09 | 77.8/4.58 | **80.4/3.33** | 79.6/2.91 |
 
-- **Order search + replay-protected local** lift mean well above base and reduce std below base on **all six**
-  methods (the storyline: accuracy up, order-variance down). V1 (no merge) already shows most of this.
-- **The step-size merge (V3) beats the single jump (V2) on mean for 5/6 methods** (er +2.5, der +0.9,
-  finetune +1.4, ewc +1.4, sr +1.8; ser is the one where V2's tighter guard wins). The search rarely takes a
-  full jump — it mostly picks a partial step (0.5–0.75) or the local, which is why it is both higher and safer.
+- **The std reduction vs base comes from the order search + replay-protected local, not the merge.** V1 (no
+  merge) already reduces std below base on all six methods and is the *tightest* of the HTCL variants. The merge
+  then adds mean: HTCL's std is actually **wider than V1 for four methods** (finetune, der, ewc, sr; tighter only
+  for er, ser). So the honest statement is: HTCL reduces order-variance below base on all six, and the merge
+  **buys accuracy at a small cost in spread** — it does not tighten the distinct-order spread.
+- **The step-size merge (V3) beats the no-merge V1 on mean for all six** (er +4.9, der +5.2, ewc +2.6, sr +2.3,
+  ser +1.2, finetune +0.1 — so the merge earns its place mostly on the replay methods, and adds ~nothing on
+  finetune), and beats the single jump (V2) on mean for 5/6 (sr +2.6, er +2.5, finetune +1.4, ewc +1.4,
+  der +0.9; ser is the one where V2's all-or-nothing guard is tighter and slightly higher).
+- **The search rarely takes a full jump.** Over 60 merges it picks a partial step (0.25–0.75) 57% of the time,
+  the local 27%, a full step 17%, and α=0 (keep the old w_1) never.
 - **`merge_last`** removes an adversarial-order collapse that skip-incomplete suffers: on `[1,4,2,3,0]` sr the
   lone final task wipes task 2 (98→50) under skip, but the merge recovers it (70.5→78.9 ACC).
 - **BN keeps the buffer, gradient does not** (§5): fully dropping the buffer from BN cost sr ~2.6 pts with no
-  upside; the split is performance-neutral vs. keeping it and makes "the global never trains on replay" exact.
-- **V4 (memory, no HTCL)** shows that for buffer-free methods the N-sample reservoir alone recovers most of the
-  gain; HTCL's distinctive contribution is clearest on the **replay methods** (er/der) where there is no memory
-  confound and V3 beats base by +5.3/+6.3.
+  upside; the split is performance-neutral vs. keeping it, and makes it exact that the global takes **no
+  replay-gradient steps of its own** (its g, H are group-only). It still *inherits* what the reservoir taught,
+  through the merge toward the replay-protected local — and in the 27% of merges that adopt the local, the
+  deployed model literally is that replay-trained local. So: no replay-gradient of its own, not "never touches
+  memory".
+- **V4 (memory, no HTCL).** For buffer-free methods the N-sample reservoir is most of the story (base ~62 →
+  ~79). HTCL **matches** that baseline (finetune +1.1, ewc +3.3, sr +0.8 over V4) rather than clearly beating it,
+  and with wider spread on finetune and sr — but it reaches that accuracy *without the deployed model taking a
+  replay-gradient step* (the reservoir trains only the local). HTCL's clean margin over base is on the **replay
+  methods** (er +5.3, der +6.3), where there is no buffer question at all.
 
 ## Ablations (how to turn parts off)
 
@@ -70,11 +84,14 @@ Fisher for H, `λ = 1/lr`. Time per group O(k!·train + |grid|·eval); space O(m
 
 ## §C15 — the order-variance claim, stated honestly
 
-Finding the best task order is NP-hard (n! orderings). HTCL does not solve it; it **removes order-variance
-within small windows exactly** (a tractable O(k!) search per group) and **mitigates the rest empirically**
-through the guarded step-size merge. For n=5, k=2 the 120 orderings collapse to 30 within-window classes, and
-HTCL is bit-identical within each class (verified). Scope every variance claim to *within-window* order and
-report `n_unique_runs`; the merge is what keeps the distinct classes tight, and that part is empirical.
+The number of task orders grows factorially (n! orderings), so exhaustively evaluating orders to pick the best
+is intractable — not a proven NP-hardness, just factorial blow-up. HTCL does not find the best order; it
+**removes order-variance within small windows exactly** (a tractable O(k!) search per group) and **mitigates
+the rest empirically**. For n=5, k=2 the 120 orderings collapse to 30 within-window classes, and HTCL is
+bit-identical within each class (verified). Scope every variance claim to *within-window* order and report
+`n_unique_runs`. The empirical reduction below base over the distinct classes comes from the **order search +
+replay-protected local** (V1 is the tightest variant); the step-size merge trades a little of that spread for
+mean accuracy, so do not credit the merge with tightening the distinct-order spread.
 
 ## Where the numbers live
 

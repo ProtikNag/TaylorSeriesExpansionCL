@@ -25,7 +25,9 @@ PASS; pseudocode in `pseudocode/01_htcl_group_schedule.pdf`). The parts:
   the search absorbs the lone-task overshoot (an earlier skip-incomplete rule collapsed on adversarial orders,
   e.g. sr `[1,4,2,3,0]`: task 2 fell 98→50; the merge recovers it).
 - **BN / gradient buffer split.** BN recalibration always sees the replay buffer (seen-task statistics); the
-  Taylor gradient for a no-replay method is the group only, so the deployed model never trains on replay.
+  Taylor gradient for a no-replay method is the group only, so the deployed global takes **no replay-gradient
+  step of its own** — it still inherits what the reservoir taught through the merge toward the replay-protected
+  local (and in the ~27% of merges that adopt the local, the deployed model *is* that replay-trained local).
 
 **Why the group schedule and not the "online nudge".** We explored a continuous-global online schedule (the
 "nudge", since removed from the code). It lacks within-window invariance — the global trains tasks in arrival
@@ -35,27 +37,30 @@ so it is provably invariant (C15). The online schedule remains only as the R1 sc
 ## 2. The new storyline (intro narrative + Fig. 1)
 
 Task-order sensitivity is real and matters (a medical model shouldn't depend on disease order). Finding
-the best order is **NP-hard**: n tasks → n! orderings, intractable (10! ≈ 3.6M). HTCL does not solve
-this. Instead it **removes order-sensitivity within small windows exactly** (a tractable O(k!) search per
-group) and **mitigates the rest empirically** through guarded hierarchical consolidation.
+the best order means searching **factorially many** orderings (n! — 10! ≈ 3.6M), which is intractable
+(factorial blow-up, not a proven NP-hardness — do not claim NP-hard). HTCL does not solve this. Instead it
+**removes order-sensitivity within small windows exactly** (a tractable O(k!) search per group) and
+**mitigates the rest empirically**.
+
+**The algorithm and the authoritative numbers now live in `docs/ALGORITHM.md`** (and
+`results/cluster/vexp_split_summary.csv`); this section is only the figure/narrative framing.
 
 **Fig. 1 (base vs +HTCL, across datasets and baselines).** Per (dataset, baseline), two columns: the
-base method (lower mean accuracy, higher std across task orders) and base+HTCL (higher mean, lower std).
-Current numbers (SplitMNIST, 500 spc, controlled 20-order set, base → +HTCL-k2):
+base method (lower mean accuracy, higher std across task orders) and base+HTCL (higher mean, std below
+base). Current HTCL (SplitMNIST, full data, 20-order set, base → +HTCL k=2 — see ALGORITHM.md for V1/V2/V4):
 
 | method | base mean/std | +HTCL mean/std |
 |---|---|---|
-| finetune | 62.9 / 5.79 | 76.3 / 7.45 |
-| ER | 80.8 / 3.16 | 83.6 / 2.76 |
-| DER | 74.5 / 4.93 | 79.9 / 3.24 |
-| SER | 84.6 / 2.21 | 87.7 / 1.06 |
-| EWC | 63.1 / 7.14 | 79.8 / 5.48 |
-| SR | 62.0 / 5.47 | 80.4 / 2.37 |
+| finetune | 62.9 / 5.79 | 80.4 / 3.92 |
+| ER | 80.8 / 3.16 | 86.1 / 2.28 |
+| DER | 74.5 / 4.93 | 80.8 / 4.22 |
+| SER | 84.6 / 2.21 | 86.5 / 2.03 |
+| EWC | 63.1 / 7.14 | 81.6 / 4.09 |
+| SR | 62.0 / 5.47 | 80.4 / 3.33 |
 
-SplitMNIST shows the full effect across all six baselines (mean ↑, std ↓ for the replay family and now
-also EWC/SR/finetune after the replay-protected-local fix). Cora is a moderate supporting panel; 20NG at
-5 tasks is too easy (being re-run at 10 tasks); CIFAR-100 needs full data (200 spc gave ~15% — being
-re-run full). The laptop draws the figure from `results/cluster/storyline_summary.csv` (per-order ACC).
+SplitMNIST shows the full effect across all six baselines (mean ↑, std ↓ vs base). Cora is a moderate
+supporting panel; 20NG at 5 tasks is too easy (being re-run at 10 tasks); CIFAR-100 needs full data. The
+laptop draws the figure from `results/cluster/` (per-order ACC).
 
 ## 3. How we answer C15 (the central battle)
 
@@ -64,23 +69,25 @@ that *contains within-window-equivalent orders*; on genuinely distinct orders HT
 variance, so the reduction looks like a counting artifact.
 
 **Our counter-argument (this is the spine of the rebuttal):**
-1. Order-sensitivity is **NP-hard** — you cannot evaluate all n! orders to pick the best. Any honest
-   method must be a tractable approximation. HTCL's O(k!)-per-group search is exactly that.
+1. Order-sensitivity is a **factorial** search — you cannot evaluate all n! orders to pick the best (say
+   factorial blow-up, not "NP-hard"). Any honest method must be a tractable approximation. HTCL's
+   O(k!)-per-group search is exactly that.
 2. HTCL is **provably invariant to within-window order**. For n=5, k=2 the 5!=120 orderings collapse
    into 120/(2!·2!) = 30 equivalence classes. A base method yields up to 120 distinct accuracies; HTCL
    yields at most 30, identical within each class (we verified bit-identical). This is a **guarantee**,
    not an artifact — we *remove* within-window variance by construction, and we report `n_unique` openly.
 3. **But the collapse alone is not the reduction** — and we must say this, not hide it. The 30 class
-   representatives could be *more* spread than the 120 (before the skip-incomplete + guard fixes, the
-   SplitMNIST classes ranged 58–85, i.e. HTCL's std was *worse*). What keeps the classes **tight** is
-   the guarded consolidation (+ skip-incomplete). That part is **empirical**, and we now have the data
-   showing HTCL's std over the distinct classes is below base's std.
+   representatives could be *more* spread than the 120. What keeps the distinct classes **below base's
+   std** is the **within-group order search + the replay-protected local** (the V1 "no-merge" variant is
+   the tightest HTCL variant). The step-size merge then **trades a little of that spread for mean accuracy**
+   — HTCL's std is actually wider than V1 for four of six methods — so do NOT credit the merge with tightening
+   the spread. That empirical reduction (search + local, std below base on all six) is what we claim.
 
 So the honest, airtight claim is **two separable contributions**:
 - (a) *Provable* within-window order-invariance: HTCL removes within-window variance exactly, in O(k!)
   instead of O(n!). Larger k → more of the n! space collapses → more variance removed by construction.
-- (b) *Empirical* cross-window mitigation + mean-accuracy improvement at equal memory, via the guarded
-  hierarchical consolidation.
+- (b) *Empirical*: std below base over the distinct classes (from the order search + replay-protected local)
+  and mean-accuracy improvement at equal memory (from the step-size merge).
 
 **What we must NOT claim:** "HTCL reduces order variance over arbitrary orderings." The data refutes it
 and it is the C15 trap that sank the NeurIPS submission. Scope every variance statement to "within-window
